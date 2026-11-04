@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model barang {
+  id_barang          String               @id @db.VarChar(255)
+  nama_barang        String               @db.VarChar(255)
+  kategori           Int
+  satuan             String               @db.VarChar(255)
+  stok_minimum       Int?                 @default(0)
+  harga_jual         Decimal              @db.Decimal(19, 0)
+  detail_pemeriksaan detail_pemeriksaan[]
+  detail_pemesanan   detail_pemesanan[]
+  detail_penerimaan  detail_penerimaan[]
+  detail_pengajuan   detail_pengajuan[]
+  detail_transaksi   detail_transaksi[]
+}
+
+model detail_pemeriksaan {
+  id_pemeriksaan   String           @db.VarChar(255)
+  id_barang        String           @db.VarChar(255)
+  stok_fisik       Int
+  catatan          String?          @db.VarChar(255)
+  barang           barang           @relation(fields: [id_barang], references: [id_barang], onDelete: NoAction, onUpdate: NoAction)
+  pemeriksaan_stok pemeriksaan_stok @relation(fields: [id_pemeriksaan], references: [id_pemeriksaan], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([id_pemeriksaan, id_barang])
+}
+
+model detail_pemesanan {
+  id_pemesanan String    @db.VarChar(255)
+  id_barang    String    @db.VarChar(255)
+  harga_satuan Decimal   @db.Decimal(19, 0)
+  jumlah_pesan Int
+  barang       barang    @relation(fields: [id_barang], references: [id_barang], onDelete: NoAction, onUpdate: NoAction)
+  pemesanan    pemesanan @relation(fields: [id_pemesanan], references: [id_pemesanan], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([id_pemesanan, id_barang])
+}
+
+model detail_penerimaan {
+  id_penerimaan   String     @db.VarChar(255)
+  id_barang       String     @db.VarChar(255)
+  jumlah_diterima Int
+  barang          barang     @relation(fields: [id_barang], references: [id_barang], onDelete: NoAction, onUpdate: NoAction)
+  penerimaan      penerimaan @relation(fields: [id_penerimaan], references: [id_penerimaan], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([id_penerimaan, id_barang])
+}
+
+model detail_pengajuan {
+  id_pengajuan String    @db.VarChar(255)
+  id_barang    String    @db.VarChar(255)
+  harga_satuan Decimal   @db.Decimal(19, 0)
+  jumlah_pesan Int
+  barang       barang    @relation(fields: [id_barang], references: [id_barang], onDelete: NoAction, onUpdate: NoAction)
+  pengajuan    pengajuan @relation(fields: [id_pengajuan], references: [id_pengajuan], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([id_pengajuan, id_barang])
+}
+
+model detail_transaksi {
+  id_transaksi String    @db.VarChar(255)
+  id_barang    String    @db.VarChar(255)
+  jumlah_jual  Int
+  barang       barang    @relation(fields: [id_barang], references: [id_barang], onDelete: NoAction, onUpdate: NoAction)
+  transaksi    transaksi @relation(fields: [id_transaksi], references: [id_transaksi], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([id_transaksi, id_barang])
+}
+
+model pemeriksaan_stok {
+  id_pemeriksaan      String               @id @db.VarChar(255)
+  tanggal_pemeriksaan DateTime             @db.Date
+  id_pemeriksa        String?              @db.VarChar(255)
+  detail_pemeriksaan  detail_pemeriksaan[]
+  pengguna            pengguna?            @relation(fields: [id_pemeriksa], references: [id_pengguna], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model pemesanan {
+  id_pemesanan        String             @id @db.VarChar(255)
+  tanggal_pemesanan   DateTime           @db.Date
+  status_pemesanan    String             @db.VarChar(255)
+  tanggal_persetujuan DateTime?          @db.Date
+  id_supplier         String?            @db.VarChar(255)
+  id_pengajuan        String?            @db.VarChar(255)
+  harga_total         Decimal?           @default(0) @db.Decimal(19, 0)
+  detail_pemesanan    detail_pemesanan[]
+  pengajuan           pengajuan?         @relation(fields: [id_pengajuan], references: [id_pengajuan], onDelete: NoAction, onUpdate: NoAction)
+  supplier            supplier?          @relation(fields: [id_supplier], references: [id_suplier], onDelete: NoAction, onUpdate: NoAction)
+  penerimaan          penerimaan[]
+}
+
+model penerimaan {
+  id_penerimaan      String              @id @db.VarChar(255)
+  tanggal_penerimaan DateTime            @db.Date
+  id_pemesanan       String?             @db.VarChar(255)
+  no_faktur          String?             @db.VarChar(255)
+  id_penerima        String?             @db.VarChar(255)
+  detail_penerimaan  detail_penerimaan[]
+  pemesanan          pemesanan?          @relation(fields: [id_pemesanan], references: [id_pemesanan], onDelete: NoAction, onUpdate: NoAction)
+  pengguna           pengguna?           @relation(fields: [id_penerima], references: [id_pengguna], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model pengajuan {
+  id_pengajuan                              String             @id @db.VarChar(255)
+  tanggal_pengajuan                         DateTime           @db.Date
+  id_pengaju                                String?            @db.VarChar(255)
+  id_penyetuju                              String?            @db.VarChar(255)
+  status_penyetujuan                        Int?               @default(0)
+  harga_total                               Int?               @default(0)
+  detail_pengajuan                          detail_pengajuan[]
+  pemesanan                                 pemesanan[]
+  pengguna_pengajuan_id_pengajuTopengguna   pengguna?          @relation("pengajuan_id_pengajuTopengguna", fields: [id_pengaju], references: [id_pengguna], onDelete: NoAction, onUpdate: NoAction)
+  pengguna_pengajuan_id_penyetujuTopengguna pengguna?          @relation("pengajuan_id_penyetujuTopengguna", fields: [id_penyetuju], references: [id_pengguna], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model pengguna {
+  id_pengguna                                String             @id @db.VarChar(255)
+  nama_pengguna                              String             @db.VarChar(255)
+  username                                   String             @db.VarChar(255)
+  password                                   String             @db.VarChar(255)
+  role                                       String             @db.VarChar(255)
+  pemeriksaan_stok                           pemeriksaan_stok[]
+  penerimaan                                 penerimaan[]
+  pengajuan_pengajuan_id_pengajuTopengguna   pengajuan[]        @relation("pengajuan_id_pengajuTopengguna")
+  pengajuan_pengajuan_id_penyetujuTopengguna pengajuan[]        @relation("pengajuan_id_penyetujuTopengguna")
+  transaksi                                  transaksi[]
+}
+
+model supplier {
+  id_suplier    String      @id @db.VarChar(255)
+  nama_supplier String      @db.VarChar(255)
+  alamat        String?     @db.VarChar(255)
+  no_telepon    String?     @db.VarChar(255)
+  email         String?     @db.VarChar(255)
+  pemesanan     pemesanan[]
+}
+
+model transaksi {
+  id_transaksi      String             @id @db.VarChar(255)
+  tanggal_transaksi DateTime           @db.Date
+  id_kasir          String?            @db.VarChar(255)
+  total_harga       Decimal?           @default(0) @db.Decimal(19, 0)
+  status_transaksi  String             @db.VarChar(255)
+  detail_transaksi  detail_transaksi[]
+  pengguna          pengguna?          @relation(fields: [id_kasir], references: [id_pengguna], onDelete: NoAction, onUpdate: NoAction)
+}
