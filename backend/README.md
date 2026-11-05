@@ -1,5 +1,21 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Login and role dashboards
+
+The login screen checks `Pengguna.username` and `Pengguna.password` in
+PostgreSQL, then routes the account to a dashboard based on `Pengguna.role`.
+Dashboard access is restricted by an HTTP-only session cookie.
+
+Configure `DATABASE_URL` and `AUTH_SECRET` in `.env` before running the app.
+`AUTH_SECRET` must be a random value of at least 32 characters; production
+requires it explicitly. In development only, `DATABASE_URL` is used as a
+fallback signing key when `AUTH_SECRET` is not set.
+
+The sample passwords in `database.sql` are legacy plain-text development
+values. They are accepted only in development. Before production, replace
+stored passwords with scrypt values in the format
+`scrypt$<salt>$<64-byte-hex-hash>`.
+
 ## Getting Started
 
 First, run the development server:
