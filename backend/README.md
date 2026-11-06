@@ -11,10 +11,11 @@ Configure `DATABASE_URL` and `AUTH_SECRET` in `.env` before running the app.
 requires it explicitly. In development only, `DATABASE_URL` is used as a
 fallback signing key when `AUTH_SECRET` is not set.
 
-The sample passwords in `database.sql` are legacy plain-text development
-values. They are accepted only in development. Before production, replace
-stored passwords with scrypt values in the format
-`scrypt$<salt>$<64-byte-hex-hash>`.
+`database.sql` seeds example accounts with literal sample passwords (for
+example, username `anak_admin123` has password `hash_02`). A matching legacy
+plain-text password is accepted once and immediately replaced in the database
+with a scrypt hash in the format `scrypt$<salt>$<64-byte-hex-hash>`. Change
+these sample credentials before using the app with real users.
 
 ## Getting Started
 

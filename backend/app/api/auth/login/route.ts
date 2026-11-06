@@ -1,4 +1,4 @@
-import { scrypt, timingSafeEqual } from "node:crypto";
+import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import {
   createSessionToken,
@@ -8,41 +8,53 @@ import {
 } from "@/app/lib/auth";
 import { prisma } from "@/app/lib/prisma";
 
-async function verifyPassword(
-  providedPassword: string,
-  storedPassword: string,
-) {
+function derivePasswordHash(password: string, salt: string) {
+  return new Promise<Buffer>((resolve, reject) => {
+    scrypt(password, salt, 64, (error, key) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve(key);
+    });
+  });
+}
+
+async function hashPassword(password: string) {
+  const salt = randomBytes(16).toString("hex");
+  const hash = await derivePasswordHash(password, salt);
+
+  return `scrypt$${salt}$${hash.toString("hex")}`;
+}
+
+async function verifyPassword(providedPassword: string, storedPassword: string) {
   const [algorithm, salt, hash] = storedPassword.split("$");
 
-  if (algorithm === "scrypt" && salt && hash && /^[\da-f]{128}$/i.test(hash)) {
-    const derivedKey = await new Promise<Buffer>((resolve, reject) => {
-      scrypt(providedPassword, salt, 64, (error, key) => {
-        if (error) {
-          reject(error);
-          return;
-        }
+  if (algorithm === "scrypt") {
+    if (!salt || !hash || !/^[\da-f]{128}$/i.test(hash)) {
+      return { valid: false, needsRehash: false };
+    }
 
-        resolve(key);
-      });
-    });
+    const derivedKey = await derivePasswordHash(providedPassword, salt);
     const expectedHash = Buffer.from(hash, "hex");
 
-    return (
-      derivedKey.length === expectedHash.length &&
-      timingSafeEqual(derivedKey, expectedHash)
-    );
-  }
-
-  if (process.env.NODE_ENV === "production") {
-    return false;
+    return {
+      valid:
+        derivedKey.length === expectedHash.length &&
+        timingSafeEqual(derivedKey, expectedHash),
+      needsRehash: false,
+    };
   }
 
   const provided = Buffer.from(providedPassword);
   const stored = Buffer.from(storedPassword);
 
-  return (
-    provided.length === stored.length && timingSafeEqual(provided, stored)
-  );
+  return {
+    valid:
+      provided.length === stored.length && timingSafeEqual(provided, stored),
+    needsRehash: true,
+  };
 }
 
 export async function POST(request: Request) {
@@ -85,11 +97,51 @@ export async function POST(request: Request) {
       },
     });
 
-    if (!user || !(await verifyPassword(credentials.password, user.password))) {
+    if (!user) {
       return NextResponse.json(
         { error: "Username atau password salah. Silakan coba lagi." },
         { status: 401 },
       );
+    }
+
+    const verification = await verifyPassword(
+      credentials.password,
+      user.password,
+    );
+
+    if (!verification.valid) {
+      return NextResponse.json(
+        { error: "Username atau password salah. Silakan coba lagi." },
+        { status: 401 },
+      );
+    }
+
+    if (verification.needsRehash) {
+      const migration = await prisma.pengguna.updateMany({
+        where: {
+          id_pengguna: user.id_pengguna,
+          password: user.password,
+        },
+        data: { password: await hashPassword(credentials.password) },
+      });
+
+      if (migration.count === 0) {
+        const latestUser = await prisma.pengguna.findUnique({
+          where: { id_pengguna: user.id_pengguna },
+          select: { password: true },
+        });
+
+        if (
+          !latestUser ||
+          !(await verifyPassword(credentials.password, latestUser.password))
+            .valid
+        ) {
+          return NextResponse.json(
+            { error: "Username atau password salah. Silakan coba lagi." },
+            { status: 401 },
+          );
+        }
+      }
     }
 
     if (!isUserRole(user.role)) {
