@@ -13,21 +13,24 @@ export default function Home() {
         src="/images/login-background-new.png"
       />
 
-      <Image
-        alt="Logo Apotek Media Medika"
-        className="pharmacy-mark pharmacy-mark-new"
-        height={215}
-        priority
-        src="/images/login-logo-new.png"
-        width={218}
-      />
+      <div aria-hidden="true" className="login-overlay" />
+      <div className="login-content">
+        <Image
+          alt="Logo Apotek Media Medika"
+          className="pharmacy-mark pharmacy-mark-new"
+          height={215}
+          priority
+          src="/images/login-logo-new.png"
+          width={218}
+        />
 
-      <header className="brand brand-new">
-        <h1>APOTEK</h1>
-        <p>Media Medika</p>
-      </header>
+        <header className="brand brand-new">
+          <h1>APOTEK</h1>
+          <p>Media Medika</p>
+        </header>
 
-      <LoginForm />
+        <LoginForm />
+      </div>
     </main>
   );
 }

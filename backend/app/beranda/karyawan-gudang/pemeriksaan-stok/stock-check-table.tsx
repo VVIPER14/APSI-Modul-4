@@ -3,6 +3,9 @@
 import Image from "next/image";
 import { useMemo, useState } from "react";
 
+const noteChoices = ["Stok sesuai", "Stok kurang", "Stok lebih", "Lainnya"] as const;
+type NoteChoice = (typeof noteChoices)[number] | "";
+
 type StockItem = {
   id_barang: string;
   nama_barang: string;
@@ -12,43 +15,192 @@ type StockItem = {
   catatan: string;
 };
 
+type DraftStockItem = StockItem & {
+  pilihanCatatan: NoteChoice;
+  catatanLainnya: string;
+};
+
+type SortKey =
+  | "id_barang"
+  | "nama_barang"
+  | "satuan"
+  | "stok_minimum"
+  | "stok"
+  | "catatan"
+  | "status";
+
+type SortState = {
+  key: SortKey;
+  direction: "ascending" | "descending";
+};
+
+function getNoteParts(catatan: string): Pick<
+  DraftStockItem,
+  "pilihanCatatan" | "catatanLainnya"
+> {
+  if (noteChoices.includes(catatan as (typeof noteChoices)[number])) {
+    return {
+      pilihanCatatan: catatan as (typeof noteChoices)[number],
+      catatanLainnya: "",
+    };
+  }
+
+  if (catatan.startsWith("Lainnya:")) {
+    return {
+      pilihanCatatan: "Lainnya",
+      catatanLainnya: catatan.slice("Lainnya:".length).trim(),
+    };
+  }
+
+  if (catatan) {
+    return { pilihanCatatan: "Lainnya", catatanLainnya: catatan };
+  }
+
+  return { pilihanCatatan: "", catatanLainnya: "" };
+}
+
+function getStoredNote(item: DraftStockItem) {
+  if (item.pilihanCatatan === "Lainnya") {
+    const note = item.catatanLainnya.trim();
+    return note ? `Lainnya: ${note}` : null;
+  }
+
+  return item.pilihanCatatan || null;
+}
+
+function toDraft(item: StockItem): DraftStockItem {
+  return { ...item, ...getNoteParts(item.catatan) };
+}
+
+function getStatus(item: StockItem) {
+  return item.stok >= item.stok_minimum ? "Aman" : "Kurang";
+}
+
+function compareItems(
+  first: DraftStockItem,
+  second: DraftStockItem,
+  key: SortKey,
+) {
+  const firstValue =
+    key === "catatan"
+      ? getStoredNote(first) ?? ""
+      : key === "status"
+        ? getStatus(first)
+        : first[key];
+  const secondValue =
+    key === "catatan"
+      ? getStoredNote(second) ?? ""
+      : key === "status"
+        ? getStatus(second)
+        : second[key];
+
+  if (typeof firstValue === "number" && typeof secondValue === "number") {
+    return firstValue - secondValue;
+  }
+
+  return String(firstValue).localeCompare(String(secondValue), "id", {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
 export default function StockCheckTable({
   initialItems,
 }: {
   initialItems: StockItem[];
 }) {
-  const [items, setItems] = useState(initialItems);
+  const [items, setItems] = useState(() => initialItems.map(toDraft));
+  const [originalItems, setOriginalItems] = useState(initialItems);
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [sort, setSort] = useState<SortState>({
+    key: "nama_barang",
+    direction: "ascending",
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
-  const [savedId, setSavedId] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [feedbackType, setFeedbackType] = useState<"success" | "neutral">(
+    "neutral",
+  );
+
+  const changedItems = useMemo(() => {
+    const originalById = new Map(
+      originalItems.map((item) => [item.id_barang, item]),
+    );
+
+    return items
+      .filter((item) => {
+        const original = originalById.get(item.id_barang);
+        return (
+          !original ||
+          original.stok !== item.stok ||
+          (original.catatan || null) !== getStoredNote(item)
+        );
+      })
+      .map(({ id_barang, stok, ...item }) => ({
+        id_barang,
+        stok,
+        catatan: getStoredNote({ id_barang, stok, ...item }),
+      }));
+  }, [items, originalItems]);
 
   const visibleItems = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("id");
+    const filtered = query
+      ? items.filter(
+          (item) =>
+            item.id_barang.toLocaleLowerCase("id").includes(query) ||
+            item.nama_barang.toLocaleLowerCase("id").includes(query),
+        )
+      : items;
 
-    if (!query) {
-      return items;
-    }
+    return [...filtered].sort((first, second) => {
+      const compared = compareItems(first, second, sort.key);
+      return sort.direction === "ascending" ? compared : -compared;
+    });
+  }, [items, search, sort]);
 
-    return items.filter(
-      (item) =>
-        item.id_barang.toLocaleLowerCase("id").includes(query) ||
-        item.nama_barang.toLocaleLowerCase("id").includes(query),
-    );
-  }, [items, search]);
-
-  function updateItem(id: string, change: Partial<StockItem>) {
+  function updateItem(id: string, change: Partial<DraftStockItem>) {
     setItems((current) =>
       current.map((item) =>
         item.id_barang === id ? { ...item, ...change } : item,
       ),
     );
+    setError("");
+    setFeedback("");
+  }
+
+  function toggleSort(key: SortKey) {
+    setSort((current) => ({
+      key,
+      direction:
+        current.key === key && current.direction === "ascending"
+          ? "descending"
+          : "ascending",
+    }));
   }
 
   async function saveInspection() {
     setError("");
-    setSavedId("");
+    setFeedback("");
+
+    const emptyOtherNote = items.find(
+      (item) =>
+        item.pilihanCatatan === "Lainnya" && !item.catatanLainnya.trim(),
+    );
+
+    if (emptyOtherNote) {
+      setError(`Isi catatan untuk ${emptyOtherNote.nama_barang}.`);
+      return;
+    }
+
+    if (changedItems.length === 0) {
+      setFeedback("Tidak ada perubahan. Pemeriksaan tidak dicatat.");
+      setFeedbackType("neutral");
+      return;
+    }
+
     setIsSaving(true);
 
     try {
@@ -57,13 +209,7 @@ export default function StockCheckTable({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            items: items.map(({ id_barang, stok, catatan }) => ({
-              id_barang,
-              stok,
-              catatan,
-            })),
-          }),
+          body: JSON.stringify({ items: changedItems }),
         },
       );
       const result: unknown = await response.json();
@@ -80,23 +226,72 @@ export default function StockCheckTable({
         return;
       }
 
-      if (
-        typeof result !== "object" ||
-        result === null ||
-        !("id_pemeriksaan" in result) ||
-        typeof result.id_pemeriksaan !== "string"
-      ) {
+      if (typeof result !== "object" || result === null) {
         setError("Respons penyimpanan pemeriksaan tidak valid.");
         return;
       }
 
-      setSavedId(result.id_pemeriksaan);
+      setOriginalItems(
+        items.map(({ pilihanCatatan, catatanLainnya, ...item }) => ({
+          ...item,
+          catatan: getStoredNote({ ...item, pilihanCatatan, catatanLainnya }) ?? "",
+        })),
+      );
       setEditingId(null);
+
+      if ("id_pemeriksaan" in result && typeof result.id_pemeriksaan === "string") {
+        setFeedback(`Pemeriksaan ${result.id_pemeriksaan} berhasil disimpan.`);
+        setFeedbackType("success");
+      } else {
+        setFeedback("Tidak ada perubahan baru. Pemeriksaan tidak dicatat.");
+        setFeedbackType("neutral");
+      }
     } catch {
       setError("Tidak dapat terhubung ke server. Silakan coba lagi.");
     } finally {
       setIsSaving(false);
     }
+  }
+
+  function renderHeader(key: SortKey, label: string) {
+    const isActive = sort.key === key;
+
+    return (
+      <span
+        aria-sort={isActive ? sort.direction : "none"}
+        className="stock-check-column-header"
+        key={key}
+        role="columnheader"
+      >
+        <button
+          aria-label={`Urutkan berdasarkan ${label}${
+            isActive
+              ? sort.direction === "ascending"
+                ? ", menaik"
+                : ", menurun"
+              : ""
+          }`}
+          className="stock-check-sort-button"
+          onClick={() => toggleSort(key)}
+          type="button"
+        >
+          {label}
+          <span
+            aria-hidden="true"
+            className={`stock-check-sort-indicator${isActive ? " is-active" : ""}${
+              isActive && sort.direction === "descending" ? " is-descending" : ""
+            }`}
+          >
+            <Image
+              alt=""
+              height={8}
+              src="/images/stock-check-sort.svg"
+              width={8}
+            />
+          </span>
+        </button>
+      </span>
+    );
   }
 
   return (
@@ -120,15 +315,19 @@ export default function StockCheckTable({
       </div>
 
       <div className="stock-check-table-viewport">
-        <div className="stock-check-table" role="table" aria-label="Stok barang">
+        <div
+          aria-label="Stok barang"
+          className="stock-check-table"
+          role="table"
+        >
           <div className="stock-check-table-header" role="row">
-            <span role="columnheader">ID Barang</span>
-            <span role="columnheader">Nama Barang</span>
-            <span role="columnheader">Satuan</span>
-            <span role="columnheader">Stok Minimum</span>
-            <span role="columnheader">Stok Tersedia</span>
-            <span role="columnheader">Catatan</span>
-            <span role="columnheader">Status</span>
+            {renderHeader("id_barang", "ID Barang")}
+            {renderHeader("nama_barang", "Nama Barang")}
+            {renderHeader("satuan", "Satuan")}
+            {renderHeader("stok_minimum", "Stok Minimum")}
+            {renderHeader("stok", "Stok Tersedia")}
+            {renderHeader("catatan", "Catatan")}
+            {renderHeader("status", "Status")}
           </div>
 
           {visibleItems.length > 0 ? (
@@ -198,21 +397,40 @@ export default function StockCheckTable({
                       )}
                     </button>
                   </span>
-                  <label className="stock-check-note" role="cell">
-                    <span className="sr-only">
+                  <div className="stock-check-note" role="cell">
+                    <label className="sr-only" htmlFor={`note-${item.id_barang}`}>
                       Catatan untuk {item.nama_barang}
-                    </span>
-                    <input
-                      maxLength={255}
+                    </label>
+                    <select
+                      id={`note-${item.id_barang}`}
                       onChange={(event) =>
                         updateItem(item.id_barang, {
-                          catatan: event.target.value,
+                          pilihanCatatan: event.target.value as NoteChoice,
                         })
                       }
-                      placeholder="Catat selisih fisik..."
-                      value={item.catatan}
-                    />
-                  </label>
+                      value={item.pilihanCatatan}
+                    >
+                      <option value="">Pilih catatan...</option>
+                      {noteChoices.map((choice) => (
+                        <option key={choice} value={choice}>
+                          {choice}
+                        </option>
+                      ))}
+                    </select>
+                    {item.pilihanCatatan === "Lainnya" && (
+                      <input
+                        aria-label={`Catatan lainnya untuk ${item.nama_barang}`}
+                        maxLength={247}
+                        onChange={(event) =>
+                          updateItem(item.id_barang, {
+                            catatanLainnya: event.target.value,
+                          })
+                        }
+                        placeholder="Tulis catatan..."
+                        value={item.catatanLainnya}
+                      />
+                    )}
+                  </div>
                   <span className="stock-check-status" role="cell">
                     <span
                       className={
@@ -241,9 +459,16 @@ export default function StockCheckTable({
             <p className="stock-check-error" role="alert">
               {error}
             </p>
-          ) : savedId ? (
-            <p className="stock-check-success" role="status">
-              Pemeriksaan {savedId} berhasil disimpan.
+          ) : feedback ? (
+            <p
+              className={
+                feedbackType === "success"
+                  ? "stock-check-success"
+                  : "stock-check-neutral"
+              }
+              role="status"
+            >
+              {feedback}
             </p>
           ) : (
             <p>Klik Selesai setelah pemeriksaan seluruh barang selesai.</p>

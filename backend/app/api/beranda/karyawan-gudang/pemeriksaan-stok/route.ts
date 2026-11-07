@@ -12,7 +12,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function parseItems(body: unknown): InspectionItemInput[] | null {
-  if (!isRecord(body) || !Array.isArray(body.items) || body.items.length === 0) {
+  if (!isRecord(body) || !Array.isArray(body.items)) {
     return null;
   }
 
@@ -86,18 +86,51 @@ export async function POST(request: Request) {
     );
   }
 
-  const inspectionId = await prisma.$transaction(async (transaction) => {
+  if (items.length === 0) {
+    return Response.json({ noChanges: true });
+  }
+
+  const result = await prisma.$transaction(async (transaction) => {
     await transaction.$executeRaw`LOCK TABLE "pemeriksaan_stok" IN EXCLUSIVE MODE`;
 
     const products = await transaction.barang.findMany({
+      where: { id_barang: { in: items.map((item) => item.id_barang) } },
       select: { id_barang: true },
     });
 
-    if (
-      products.length !== items.length ||
-      products.some((product) => !items.some((item) => item.id_barang === product.id_barang))
-    ) {
-      throw new Error("Daftar barang berubah. Muat ulang halaman sebelum menyimpan.");
+    if (products.length !== items.length) {
+      return { error: "Daftar barang berubah. Muat ulang halaman sebelum menyimpan." };
+    }
+
+    const latestItems = await transaction.$queryRaw<
+      { id_barang: string; stok: number; catatan: string | null }[]
+    >`
+      SELECT DISTINCT ON (detail.id_barang)
+        detail.id_barang,
+        detail.stok,
+        detail.catatan
+      FROM "detail_pemeriksaan" AS detail
+      INNER JOIN "pemeriksaan_stok" AS pemeriksaan
+        ON pemeriksaan.id_pemeriksaan = detail.id_pemeriksaan
+      WHERE detail.id_barang = ANY(${items.map((item) => item.id_barang)}::varchar[])
+      ORDER BY
+        detail.id_barang,
+        pemeriksaan.tanggal_pemeriksaan DESC,
+        pemeriksaan.id_pemeriksaan DESC
+    `;
+    const latestByProduct = new Map(
+      latestItems.map((item) => [item.id_barang, item]),
+    );
+    const changedItems = items.filter((item) => {
+      const current = latestByProduct.get(item.id_barang);
+      return (
+        (current?.stok ?? 0) !== item.stok ||
+        (current?.catatan ?? null) !== item.catatan
+      );
+    });
+
+    if (changedItems.length === 0) {
+      return { noChanges: true };
     }
 
     const [nextInspection] = await transaction.$queryRaw<
@@ -115,7 +148,7 @@ export async function POST(request: Request) {
     const id_pemeriksaan = nextInspection?.id_pemeriksaan;
 
     if (!id_pemeriksaan) {
-      throw new Error("ID pemeriksaan stok tidak dapat dibuat.");
+      return { error: "ID pemeriksaan stok tidak dapat dibuat." };
     }
 
     const tanggal_pemeriksaan = new Date();
@@ -129,7 +162,7 @@ export async function POST(request: Request) {
     });
 
     await transaction.detail_pemeriksaan.createMany({
-      data: items.map((item) => ({
+      data: changedItems.map((item) => ({
         id_pemeriksaan,
         id_barang: item.id_barang,
         stok: item.stok,
@@ -137,8 +170,14 @@ export async function POST(request: Request) {
       })),
     });
 
-    return id_pemeriksaan;
+    return { id_pemeriksaan };
   });
 
-  return Response.json({ id_pemeriksaan: inspectionId }, { status: 201 });
+  if ("error" in result) {
+    return Response.json({ error: result.error }, { status: 409 });
+  }
+
+  return Response.json(result, {
+    status: "id_pemeriksaan" in result ? 201 : 200,
+  });
 }

@@ -1,11 +1,11 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { dashboardPathForRole, getCurrentSession } from "@/app/lib/auth";
 import { prisma } from "@/app/lib/prisma";
-import LogoutButton from "@/app/logout-button";
 import StockCheckTable from "./stock-check-table";
 
 export const metadata: Metadata = {
@@ -20,6 +20,21 @@ export default function StockCheckPage() {
           aria-busy="true"
           className="role-dashboard stock-check-screen"
         >
+          <header className="role-dashboard-header">
+            <div className="role-dashboard-brand">
+              <Image
+                alt=""
+                aria-hidden="true"
+                height={31}
+                src="/images/stock-check-brand-mark.png"
+                width={31}
+              />
+              <div>
+                <p>APOTEK</p>
+                <span>Media Medika</span>
+              </div>
+            </div>
+          </header>
           <p className="stock-check-loading">Memuat pemeriksaan stok...</p>
         </main>
       }
@@ -77,17 +92,6 @@ async function StockCheckContent() {
 
   return (
     <main className="role-dashboard stock-check-screen">
-      <Image
-        alt=""
-        aria-hidden="true"
-        className="role-dashboard-background"
-        fill
-        priority
-        sizes="100vw"
-        src="/images/stock-check-background.png"
-      />
-      <div aria-hidden="true" className="role-dashboard-overlay" />
-
       <header className="role-dashboard-header">
         <div className="role-dashboard-brand">
           <Image
@@ -102,7 +106,9 @@ async function StockCheckContent() {
             <span>Media Medika</span>
           </div>
         </div>
-        <LogoutButton />
+        <div className="dashboard-logout">
+          <Link href="/beranda/karyawan-gudang/">Kembali</Link>
+        </div>
       </header>
 
       <section aria-label="Pemeriksaan stok" className="role-dashboard-hero">
