@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useMemo, useState } from "react";
 
-const noteChoices = ["Stok sesuai", "Stok kurang", "Stok lebih", "Lainnya"] as const;
+const noteChoices = ["Sesuai", "Tidak sesuai"] as const;
 type NoteChoice = (typeof noteChoices)[number] | "";
 
 type StockItem = {
@@ -38,34 +38,37 @@ function getNoteParts(catatan: string): Pick<
   DraftStockItem,
   "pilihanCatatan" | "catatanLainnya"
 > {
-  if (noteChoices.includes(catatan as (typeof noteChoices)[number])) {
+  if (catatan === "Stok sesuai" || catatan === "Sesuai") {
     return {
-      pilihanCatatan: catatan as (typeof noteChoices)[number],
+      pilihanCatatan: "Sesuai",
       catatanLainnya: "",
     };
   }
 
-  if (catatan.startsWith("Lainnya:")) {
-    return {
-      pilihanCatatan: "Lainnya",
-      catatanLainnya: catatan.slice("Lainnya:".length).trim(),
-    };
-  }
-
   if (catatan) {
-    return { pilihanCatatan: "Lainnya", catatanLainnya: catatan };
+    const detail = catatan.startsWith("Lainnya:")
+      ? catatan.slice("Lainnya:".length).trim()
+      : catatan;
+
+    return {
+      pilihanCatatan: "Tidak sesuai",
+      catatanLainnya: detail,
+    };
   }
 
   return { pilihanCatatan: "", catatanLainnya: "" };
 }
 
 function getStoredNote(item: DraftStockItem) {
-  if (item.pilihanCatatan === "Lainnya") {
-    const note = item.catatanLainnya.trim();
-    return note ? `Lainnya: ${note}` : null;
+  if (item.pilihanCatatan === "Sesuai") {
+    return "Stok sesuai";
   }
 
-  return item.pilihanCatatan || null;
+  if (item.pilihanCatatan === "Tidak sesuai") {
+    return item.catatanLainnya.trim() || null;
+  }
+
+  return null;
 }
 
 function toDraft(item: StockItem): DraftStockItem {
@@ -187,11 +190,11 @@ export default function StockCheckTable({
 
     const emptyOtherNote = items.find(
       (item) =>
-        item.pilihanCatatan === "Lainnya" && !item.catatanLainnya.trim(),
+        item.pilihanCatatan === "Tidak sesuai" && !item.catatanLainnya.trim(),
     );
 
     if (emptyOtherNote) {
-      setError(`Isi catatan untuk ${emptyOtherNote.nama_barang}.`);
+      setError(`Jelaskan ketidaksesuaian stok untuk ${emptyOtherNote.nama_barang}.`);
       return;
     }
 
@@ -417,16 +420,16 @@ export default function StockCheckTable({
                         </option>
                       ))}
                     </select>
-                    {item.pilihanCatatan === "Lainnya" && (
+                    {item.pilihanCatatan === "Tidak sesuai" && (
                       <input
-                        aria-label={`Catatan lainnya untuk ${item.nama_barang}`}
-                        maxLength={247}
+                        aria-label={`Rincian ketidaksesuaian ${item.nama_barang}`}
+                        maxLength={255}
                         onChange={(event) =>
                           updateItem(item.id_barang, {
                             catatanLainnya: event.target.value,
                           })
                         }
-                        placeholder="Tulis catatan..."
+                        placeholder="Jelaskan ketidaksesuaian..."
                         value={item.catatanLainnya}
                       />
                     )}
