@@ -100,15 +100,24 @@ export async function POST(request: Request) {
       throw new Error("Daftar barang berubah. Muat ulang halaman sebelum menyimpan.");
     }
 
-    const [latestInspection] = await transaction.$queryRaw<
-      { last_number: bigint }[]
+    const [nextInspection] = await transaction.$queryRaw<
+      { id_pemeriksaan: string }[]
     >`
-      SELECT COALESCE(MAX(SUBSTRING("id_pemeriksaan" FROM 4)::BIGINT), 0)::BIGINT AS last_number
+      SELECT
+        'PMK' || LPAD(
+          (COALESCE(MAX(SUBSTRING("id_pemeriksaan" FROM 4)::BIGINT), 0) + 1)::TEXT,
+          3,
+          '0'
+        ) AS id_pemeriksaan
       FROM "pemeriksaan_stok"
       WHERE "id_pemeriksaan" ~ '^PMK[0-9]+$'
     `;
-    const nextNumber = (latestInspection?.last_number ?? 0n) + 1n;
-    const id_pemeriksaan = `PMK${nextNumber.toString().padStart(3, "0")}`;
+    const id_pemeriksaan = nextInspection?.id_pemeriksaan;
+
+    if (!id_pemeriksaan) {
+      throw new Error("ID pemeriksaan stok tidak dapat dibuat.");
+    }
+
     const tanggal_pemeriksaan = new Date();
 
     await transaction.pemeriksaan_stok.create({
