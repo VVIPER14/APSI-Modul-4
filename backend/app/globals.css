@@ -332,6 +332,174 @@ input {
   }
 }
 
+.login-background-new {
+  object-position: center bottom;
+}
+
+.pharmacy-mark-new {
+  top: 9.375%;
+  width: min(218px, 30vw);
+  height: auto;
+}
+
+.brand-new {
+  top: 35.15%;
+  color: #fff;
+}
+
+.brand-new h1,
+.brand-new p {
+  font-family: var(--font-instrument-serif), Georgia, serif;
+  font-size: clamp(40px, 4.45vw, 64px);
+}
+
+.brand-new h1 {
+  line-height: 78px;
+  text-transform: uppercase;
+}
+
+.brand-new p {
+  line-height: 72px;
+}
+
+.login-card-new {
+  top: 59.47%;
+  height: 291px;
+  border: 1px solid rgb(255 255 255 / 13%);
+  border-radius: 28px;
+  background: rgb(255 255 255 / 5%);
+  box-shadow:
+    0 20px 40px rgb(0 0 0 / 27%),
+    inset 0 1px 0 rgb(255 255 255 / 8%);
+  backdrop-filter: blur(24px);
+}
+
+.login-card-new h2 {
+  top: 21px;
+  color: rgb(255 255 255 / 67%);
+  font-family: var(--font-poppins), Arial, sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.login-card-new .login-error {
+  top: -58px;
+  border-color: rgb(255 255 255 / 18%);
+  background: #182332;
+  color: #ffb4ab;
+}
+
+.login-card-new .login-field {
+  left: 41px;
+  display: flex;
+  width: 254px;
+  height: 49px;
+  align-items: center;
+  gap: 20px;
+}
+
+.login-card-new .login-field-user {
+  top: 58px;
+}
+
+.login-card-new .login-field-password {
+  top: 119px;
+}
+
+.login-card-new .field-icon.login-icon-new {
+  position: static;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  object-fit: contain;
+}
+
+.login-input-shell {
+  position: relative;
+  display: flex;
+  width: 194px;
+  height: 37px;
+  flex: 0 0 194px;
+  align-items: center;
+  padding: 0 12px 0 16px;
+  border: 1px solid rgb(255 255 255 / 13%);
+  border-radius: 19px;
+  background: rgb(255 255 255 / 7%);
+}
+
+.login-input-shell input {
+  position: static;
+  width: 100%;
+  height: 35px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+  color: #f0f2f7;
+  font-family: var(--font-poppins), Arial, sans-serif;
+  font-size: 15px;
+}
+
+.login-input-shell input:focus-visible {
+  outline: none;
+}
+
+.login-input-shell:focus-within {
+  outline: 2px solid #02e9d9;
+  outline-offset: 2px;
+}
+
+.login-card-new .visibility-toggle {
+  position: static;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+
+.login-card-new .visibility-toggle img {
+  width: 18px;
+  height: 14px;
+  object-fit: contain;
+}
+
+.login-button-new {
+  top: 222px;
+  left: 41px;
+  width: 246px;
+  height: 37px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 19px;
+  background: rgb(2 233 217 / 29%);
+  color: #fff;
+  transform: none;
+}
+
+.login-button-new span {
+  font-family: var(--font-poppins), Arial, sans-serif;
+  font-weight: 600;
+}
+
+.login-button-new:focus-visible {
+  outline: 2px solid #02e9d9;
+  outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  .brand-new h1,
+  .brand-new p {
+    font-size: clamp(40px, 10vw, 56px);
+  }
+
+  .login-card-new {
+    top: auto;
+    bottom: 5svh;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
 .role-dashboard {
   position: relative;
   isolation: isolate;

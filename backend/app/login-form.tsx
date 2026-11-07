@@ -43,7 +43,7 @@ export default function LoginForm() {
   return (
     <form
       aria-labelledby="login-title"
-      className="login-card"
+      className="login-card login-card-new"
       onSubmit={handleSubmit}
     >
       <h2 id="login-title">Login</h2>
@@ -57,69 +57,65 @@ export default function LoginForm() {
         <Image
           alt=""
           aria-hidden="true"
-          className="field-icon user-icon"
-          height={49}
-          src="/images/user-icon.png"
-          width={49}
+          className="field-icon user-icon login-icon-new"
+          height={40}
+          src="/images/login-user-new.png"
+          width={40}
         />
-        <input
-          aria-label="Nama pengguna"
-          autoComplete="username"
-          name="username"
-          onChange={(event) => setUsername(event.target.value)}
-          required
-          value={username}
-        />
+        <div className="login-input-shell">
+          <input
+            aria-label="Nama pengguna"
+            autoComplete="username"
+            name="username"
+            onChange={(event) => setUsername(event.target.value)}
+            required
+            value={username}
+          />
+        </div>
       </div>
 
       <div className="login-field login-field-password">
         <Image
           alt=""
           aria-hidden="true"
-          className="field-icon password-icon"
-          height={36}
-          src="/images/password-icon.png"
-          width={36}
+          className="field-icon password-icon login-icon-new"
+          height={40}
+          src="/images/login-key-new.png"
+          width={40}
         />
-        <input
-          aria-label="Kata sandi"
-          autoComplete="current-password"
-          name="password"
-          onChange={(event) => setPassword(event.target.value)}
-          required
-          type={showPassword ? "text" : "password"}
-          value={password}
-        />
-        <button
-          aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
-          aria-pressed={showPassword}
-          className="visibility-toggle"
-          onClick={() => setShowPassword((visible) => !visible)}
-          type="button"
-        >
-          <Image
-            alt=""
-            height={25}
-            src="/images/password-visibility.png"
-            width={32}
+        <div className="login-input-shell">
+          <input
+            aria-label="Kata sandi"
+            autoComplete="current-password"
+            name="password"
+            onChange={(event) => setPassword(event.target.value)}
+            required
+            type={showPassword ? "text" : "password"}
+            value={password}
           />
-        </button>
+          <button
+            aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+            aria-pressed={showPassword}
+            className="visibility-toggle"
+            onClick={() => setShowPassword((visible) => !visible)}
+            type="button"
+          >
+            <Image
+              alt=""
+              height={14}
+              src="/images/login-lock-new.png"
+              width={18}
+            />
+          </button>
+        </div>
       </div>
 
       <button
         aria-label="Login"
-        className="login-button"
+        className="login-button login-button-new"
         disabled={isSubmitting}
         type="submit"
       >
-        <Image
-          alt=""
-          aria-hidden="true"
-          className="login-button-art"
-          height={45}
-          src="/images/login-button.svg"
-          width={254}
-        />
         <span>{isSubmitting ? "Memproses..." : "Login"}</span>
       </button>
     </form>
