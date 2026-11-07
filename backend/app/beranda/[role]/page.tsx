@@ -140,10 +140,19 @@ function RoleDashboard({
             </>
           );
 
-          return role === "karyawan-gudang" && index === 0 ? (
+          const menuHref =
+            role === "karyawan-gudang" && index === 0
+              ? "/beranda/karyawan-gudang/pemeriksaan-stok/"
+              : role === "karyawan-kasir" && index === 0
+                ? "/beranda/karyawan-kasir/cek-ketersediaan-obat/"
+                : role === "owner" && index === 0
+                  ? "/beranda/owner/informasi-stok-persediaan/"
+                  : null;
+
+          return menuHref ? (
             <a
               className="role-dashboard-menu-item"
-              href="/beranda/karyawan-gudang/pemeriksaan-stok/"
+              href={menuHref}
               key={item}
             >
               {menuContent}

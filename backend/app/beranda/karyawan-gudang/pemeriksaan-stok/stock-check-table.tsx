@@ -114,6 +114,9 @@ export default function StockCheckTable({
 }) {
   const [items, setItems] = useState(() => initialItems.map(toDraft));
   const [originalItems, setOriginalItems] = useState(initialItems);
+  const [changedItemIds, setChangedItemIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [sort, setSort] = useState<SortState>({
@@ -128,25 +131,14 @@ export default function StockCheckTable({
   );
 
   const changedItems = useMemo(() => {
-    const originalById = new Map(
-      originalItems.map((item) => [item.id_barang, item]),
-    );
-
     return items
-      .filter((item) => {
-        const original = originalById.get(item.id_barang);
-        return (
-          !original ||
-          original.stok !== item.stok ||
-          (original.catatan || null) !== getStoredNote(item)
-        );
-      })
+      .filter((item) => changedItemIds.has(item.id_barang))
       .map(({ id_barang, stok, ...item }) => ({
         id_barang,
         stok,
         catatan: getStoredNote({ id_barang, stok, ...item }),
       }));
-  }, [items, originalItems]);
+  }, [changedItemIds, items]);
 
   const visibleItems = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("id");
@@ -165,11 +157,35 @@ export default function StockCheckTable({
   }, [items, search, sort]);
 
   function updateItem(id: string, change: Partial<DraftStockItem>) {
+    const currentItem = items.find((item) => item.id_barang === id);
+
+    if (!currentItem) {
+      return;
+    }
+
+    const updatedItem = { ...currentItem, ...change };
+    const originalItem = originalItems.find((item) => item.id_barang === id);
+
     setItems((current) =>
       current.map((item) =>
-        item.id_barang === id ? { ...item, ...change } : item,
+        item.id_barang === id ? updatedItem : item,
       ),
     );
+    setChangedItemIds((current) => {
+      const next = new Set(current);
+      const hasChanged =
+        !originalItem ||
+        originalItem.stok !== updatedItem.stok ||
+        (originalItem.catatan || null) !== getStoredNote(updatedItem);
+
+      if (hasChanged) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+
+      return next;
+    });
     setError("");
     setFeedback("");
   }
@@ -240,6 +256,7 @@ export default function StockCheckTable({
           catatan: getStoredNote({ ...item, pilihanCatatan, catatanLainnya }) ?? "",
         })),
       );
+      setChangedItemIds(new Set());
       setEditingId(null);
 
       if ("id_pemeriksaan" in result && typeof result.id_pemeriksaan === "string") {

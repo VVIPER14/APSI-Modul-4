@@ -1436,6 +1436,211 @@ input {
   }
 }
 
+.stock-info-panel {
+  display: flex;
+  width: min(1296px, calc(100% - 64px));
+  min-height: 478px;
+  flex-direction: column;
+  gap: 16px;
+  margin: 32px auto 0;
+  padding: 24px;
+  border: 1px solid rgb(255 255 255 / 13%);
+  border-radius: 28px;
+  background: rgb(255 255 255 / 5%);
+  box-shadow: 0 16px 32px rgb(0 0 0 / 25%);
+  backdrop-filter: blur(24px);
+}
+
+.stock-info-toolbar {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+}
+
+.stock-info-table-viewport {
+  height: 364px;
+  overflow: auto;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 16px;
+  isolation: isolate;
+  scrollbar-color: rgb(255 255 255 / 32%) transparent;
+  scrollbar-width: thin;
+}
+
+.stock-info-table {
+  width: 100%;
+  min-width: 1232px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  color: rgb(255 255 255 / 84%);
+  font-family: var(--font-poppins), Arial, sans-serif;
+  font-size: 13px;
+}
+
+.stock-info-col-id {
+  width: 110px;
+}
+
+.stock-info-col-name {
+  width: 280px;
+}
+
+.stock-info-col-category {
+  width: 190px;
+}
+
+.stock-info-col-unit {
+  width: 120px;
+}
+
+.stock-info-col-minimum {
+  width: 180px;
+}
+
+.stock-info-col-price {
+  width: 190px;
+}
+
+.stock-info-col-status {
+  width: 162px;
+}
+
+.stock-info-table th {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  height: 60px;
+  padding: 8px 12px;
+  background: #494f59;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 15%);
+  color: rgb(255 255 255 / 88%);
+  font-family: var(--font-poppins), Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.stock-info-sort-button {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  white-space: nowrap;
+}
+
+.stock-info-table th:nth-child(2) .stock-info-sort-button {
+  justify-content: flex-start;
+}
+
+.stock-info-sort-button:hover,
+.stock-info-sort-button:focus-visible {
+  background: rgb(255 255 255 / 10%);
+}
+
+.stock-info-sort-button:focus-visible {
+  outline: 2px solid #02e9d9;
+  outline-offset: 1px;
+}
+
+.stock-info-sort-indicator {
+  position: absolute;
+  right: 2px;
+  display: grid;
+  width: 12px;
+  height: 12px;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 7px;
+  background: rgb(255 255 255 / 8%);
+  opacity: 0.55;
+}
+
+.stock-info-sort-indicator.is-active {
+  opacity: 1;
+}
+
+.stock-info-sort-indicator.is-descending img {
+  transform: rotate(180deg);
+}
+
+.stock-info-sort-indicator img {
+  display: block;
+}
+
+.stock-info-table td {
+  height: 76px;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgb(255 255 255 / 9%);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stock-info-table td:not(:nth-child(2)) {
+  text-align: center;
+}
+
+.stock-info-table .stock-info-id {
+  color: rgb(255 255 255 / 65%);
+  font-size: 13px;
+}
+
+.stock-info-table .stock-info-name {
+  color: #fff;
+  font-weight: 600;
+}
+
+.stock-info-table .stock-info-minimum {
+  color: #fff;
+  font-weight: 600;
+}
+
+.stock-info-table .stock-info-empty {
+  color: rgb(255 255 255 / 70%);
+  text-align: center;
+}
+
+.stock-info-table .stock-check-status-pill {
+  display: inline-block;
+  min-width: 64px;
+}
+
+@media (max-width: 760px) {
+  .stock-info-panel {
+    width: calc(100% - 32px);
+    min-height: 478px;
+    margin-top: 20px;
+    padding: 16px;
+    border-radius: 22px;
+  }
+
+  .stock-info-table-viewport {
+    height: min(364px, 52svh);
+  }
+}
+
+@media (max-width: 560px) {
+  .stock-info-panel {
+    width: calc(100% - 24px);
+    padding: 12px;
+  }
+
+  .stock-info-table-viewport {
+    height: min(364px, 52svh);
+  }
+}
+
 @media (max-height: 560px) {
   .login-content {
     padding-top: 20px;
