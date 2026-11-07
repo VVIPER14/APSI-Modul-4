@@ -8,6 +8,8 @@ import { proposalStatuses } from "@/app/lib/procurement";
 import { prisma } from "@/app/lib/prisma";
 import ApprovalTable, { type ApprovalProposal } from "./approval-table";
 
+export const instant = false;
+
 export const metadata: Metadata = {
   title: "Persetujuan Pengajuan | Apotek Media Medika",
 };

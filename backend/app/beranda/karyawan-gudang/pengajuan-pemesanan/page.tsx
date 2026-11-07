@@ -11,6 +11,8 @@ import ProposalForm, {
   type ProposalProduct,
 } from "./proposal-form";
 
+export const instant = false;
+
 export const metadata: Metadata = {
   title: "Pengajuan Pemesanan | Apotek Media Medika",
 };
