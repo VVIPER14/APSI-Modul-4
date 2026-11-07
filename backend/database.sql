@@ -45,22 +45,23 @@ INSERT INTO Barang (id_barang, nama_barang, kategori, satuan, stok_minimum, harg
 ('BRG009', 'Antasida DOEN', 'Obat Bebas Terbatas', 'Strip', 15, 3000);
 
 -- 2.1 Data Pengajuan
+-- Status: 0=Belum Diajukan, 1=Sedang Diproses, 2=Disetujui, 3=Ditolak.
 CREATE TABLE Pengajuan (
     id_pengajuan VARCHAR(255) PRIMARY KEY,
     tanggal_pengajuan DATE,
     id_pengaju VARCHAR(255),
     id_penyetuju VARCHAR(255),
     status_penyetujuan INT,
-    harga_total DECIMAL(10, 2),
+    harga_total DECIMAL(19, 0),
     FOREIGN KEY (id_pengaju) REFERENCES Pengguna(id_pengguna),
     FOREIGN KEY (id_penyetuju) REFERENCES Pengguna(id_pengguna)
 );
 INSERT INTO Pengajuan (id_pengajuan, tanggal_pengajuan, id_pengaju, id_penyetuju, status_penyetujuan, harga_total) VALUES
-('PGJ001', '2026-09-01', 'USR003', 'USR001', 1, 750000),
-('PGJ002', '2026-09-15', 'USR003', 'USR001', 1, 345000),
-('PGJ003', '2026-09-25', 'USR003', 'USR001', 1, 650000),
-('PGJ004', '2026-10-05', 'USR003', 'USR001', 1, 510000),
-('PGJ005', '2026-10-13', 'USR003', 'USR001', 1, 204000);
+('PGJ001', '2026-09-01', 'USR003', 'USR001', 2, 750000),
+('PGJ002', '2026-09-15', 'USR003', 'USR001', 2, 345000),
+('PGJ003', '2026-09-25', 'USR003', 'USR001', 2, 650000),
+('PGJ004', '2026-10-05', 'USR003', 'USR001', 2, 510000),
+('PGJ005', '2026-10-13', 'USR003', 'USR001', 2, 204000);
 
 -- 2.2 Data Pemesanan
 CREATE TABLE Pemesanan (
@@ -132,23 +133,25 @@ INSERT INTO Transaksi (id_transaksi, tanggal_transaksi, id_kasir, total_harga, s
 CREATE TABLE Detail_Pengajuan (
     id_pengajuan VARCHAR(255),
     id_barang VARCHAR(255),
+    id_supplier VARCHAR(255),
     harga_satuan DECIMAL(10, 2),
     jumlah_pesan INT,
     PRIMARY KEY (id_pengajuan, id_barang),
     FOREIGN KEY (id_pengajuan) REFERENCES Pengajuan(id_pengajuan),
-    FOREIGN KEY (id_barang) REFERENCES Barang(id_barang)
+    FOREIGN KEY (id_barang) REFERENCES Barang(id_barang),
+    FOREIGN KEY (id_supplier) REFERENCES Supplier(id_suplier)
 );
-INSERT INTO Detail_Pengajuan (id_pengajuan, id_barang, harga_satuan, jumlah_pesan) VALUES
-('PGJ001', 'BRG001', 1000, 100),
-('PGJ001', 'BRG002', 13000, 50),
-('PGJ002', 'BRG003', 4500, 50),
-('PGJ002', 'BRG004', 6000, 20),
-('PGJ003', 'BRG005', 12000, 50),
-('PGJ003', 'BRG006', 1000, 50),
-('PGJ004', 'BRG007', 8000, 20),
-('PGJ004', 'BRG008', 3500, 100),
-('PGJ005', 'BRG001', 1500, 100),
-('PGJ005', 'BRG009', 1800, 30);
+INSERT INTO Detail_Pengajuan (id_pengajuan, id_barang, id_supplier, harga_satuan, jumlah_pesan) VALUES
+('PGJ001', 'BRG001', 'SUP001', 1000, 100),
+('PGJ001', 'BRG002', 'SUP001', 13000, 50),
+('PGJ002', 'BRG003', 'SUP001', 4500, 50),
+('PGJ002', 'BRG004', 'SUP001', 6000, 20),
+('PGJ003', 'BRG005', 'SUP001', 12000, 50),
+('PGJ003', 'BRG006', 'SUP001', 1000, 50),
+('PGJ004', 'BRG007', 'SUP001', 8000, 20),
+('PGJ004', 'BRG008', 'SUP001', 3500, 100),
+('PGJ005', 'BRG001', 'SUP001', 1500, 100),
+('PGJ005', 'BRG009', 'SUP001', 1800, 30);
 
 -- 3.2 Detail Pemesanan
 CREATE TABLE Detail_Pemesanan (

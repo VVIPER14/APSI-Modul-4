@@ -56,10 +56,12 @@ model detail_penerimaan {
 model detail_pengajuan {
   id_pengajuan String    @db.VarChar(255)
   id_barang    String    @db.VarChar(255)
+  id_supplier  String?   @db.VarChar(255)
   harga_satuan Decimal   @db.Decimal(19, 0)
   jumlah_pesan Int
   barang       barang    @relation(fields: [id_barang], references: [id_barang], onDelete: NoAction, onUpdate: NoAction)
   pengajuan    pengajuan @relation(fields: [id_pengajuan], references: [id_pengajuan], onDelete: Cascade, onUpdate: NoAction)
+  supplier     supplier? @relation(fields: [id_supplier], references: [id_suplier], onDelete: NoAction, onUpdate: NoAction)
 
   @@id([id_pengajuan, id_barang])
 }
@@ -68,7 +70,7 @@ model detail_transaksi {
   id_transaksi      String    @db.VarChar(255)
   id_barang         String    @db.VarChar(255)
   jumlah_jual       Int
-  harga_satuan_jual Decimal? @db.Decimal(19, 0)
+  harga_satuan_jual Decimal?  @db.Decimal(19, 0)
   barang            barang    @relation(fields: [id_barang], references: [id_barang], onDelete: NoAction, onUpdate: NoAction)
   transaksi         transaksi @relation(fields: [id_transaksi], references: [id_transaksi], onDelete: Cascade, onUpdate: NoAction)
 
@@ -113,8 +115,9 @@ model pengajuan {
   tanggal_pengajuan                         DateTime           @db.Date
   id_pengaju                                String?            @db.VarChar(255)
   id_penyetuju                              String?            @db.VarChar(255)
+  /// Status: 0=Belum Diajukan, 1=Sedang Diproses, 2=Disetujui, 3=Ditolak.
   status_penyetujuan                        Int?               @default(0)
-  harga_total                               Int?               @default(0)
+  harga_total                               Decimal?           @default(0) @db.Decimal(19, 0)
   detail_pengajuan                          detail_pengajuan[]
   pemesanan                                 pemesanan[]
   pengguna_pengajuan_id_pengajuTopengguna   pengguna?          @relation("pengajuan_id_pengajuTopengguna", fields: [id_pengaju], references: [id_pengguna], onDelete: NoAction, onUpdate: NoAction)
@@ -135,12 +138,13 @@ model pengguna {
 }
 
 model supplier {
-  id_suplier    String      @id @db.VarChar(255)
-  nama_supplier String      @db.VarChar(255)
-  alamat        String?     @db.VarChar(255)
-  no_telepon    String?     @db.VarChar(255)
-  email         String?     @db.VarChar(255)
-  pemesanan     pemesanan[]
+  id_suplier       String             @id @db.VarChar(255)
+  nama_supplier    String             @db.VarChar(255)
+  alamat           String?            @db.VarChar(255)
+  no_telepon       String?            @db.VarChar(255)
+  email            String?            @db.VarChar(255)
+  detail_pengajuan detail_pengajuan[]
+  pemesanan        pemesanan[]
 }
 
 model transaksi {

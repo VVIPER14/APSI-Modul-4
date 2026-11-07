@@ -35,13 +35,13 @@ const dashboardCards: Record<string, [string, string, string]> = {
   ],
   "karyawan-gudang": [
     "Pemeriksaan Stok",
-    "Pengajuan Stok",
+    "Pengajuan Pemesanan",
     "Penerimaan Barang",
   ],
   owner: [
     "Informasi Stok Persediaan",
-    "Pengajuan Pemesanan",
-    "Laporan Persediaan",
+    "Persetujuan Pengajuan Pemesanan",
+    "Laporan Keuangan",
   ],
   admin: ["Data Master", "Verifikasi Data", "Laporan Persediaan"],
 };
@@ -50,17 +50,22 @@ const roleDescriptions: Record<string, string> = {
   "karyawan-kasir":
     "Beranda operasional kasir untuk pencarian obat, pembuatan pesanan, dan pemantauan transaksi.",
   "karyawan-gudang":
-    "Beranda operasional gudang untuk pemantauan stok, pengajuan, dan penerimaan barang.",
+    "Beranda operasional gudang untuk pemantauan stok, pengajuan pemesanan, dan penerimaan barang.",
   owner:
     "Beranda operasional owner untuk pemantauan stok, pengajuan, dan laporan persediaan.",
   admin:
     "Beranda operasional admin untuk pengelolaan data master, verifikasi data, dan pelaporan persediaan.",
 };
 
-const menuIcons: [string, string, string] = [
+const defaultMenuIcons: [string, string, string] = [
   "/images/cashier-search.svg",
   "/images/cashier-plus-circle.svg",
   "/images/cashier-package.svg",
+];
+const ownerMenuIcons: [string, string, string] = [
+  "/images/owner-menu-search.svg",
+  "/images/owner-menu-plus.svg",
+  "/images/owner-menu-package.svg",
 ];
 
 function RoleDashboard({
@@ -83,7 +88,11 @@ function RoleDashboard({
         fill
         priority
         sizes="100vw"
-        src="/images/cashier-background.png"
+        src={
+          role === "owner"
+            ? "/images/owner-home-background.png"
+            : "/images/cashier-background.png"
+        }
       />
       <div aria-hidden="true" className="role-dashboard-overlay" />
 
@@ -93,7 +102,11 @@ function RoleDashboard({
             alt=""
             aria-hidden="true"
             height={31}
-            src="/images/cashier-brand-mark.png"
+            src={
+              role === "owner"
+                ? "/images/owner-home-brand.png"
+                : "/images/cashier-brand-mark.png"
+            }
             width={31}
           />
           <div>
@@ -114,7 +127,11 @@ function RoleDashboard({
           <Image
             alt=""
             height={72}
-            src="/images/cashier-avatar.png"
+            src={
+              role === "owner"
+                ? "/images/owner-home-avatar.png"
+                : "/images/cashier-avatar.png"
+            }
             width={72}
           />
         </div>
@@ -126,7 +143,12 @@ function RoleDashboard({
           const menuContent = (
             <>
               <span aria-hidden="true" className="role-dashboard-menu-icon">
-                <Image alt="" height={20} src={menuIcons[index]} width={20} />
+                <Image
+                  alt=""
+                  height={20}
+                  src={(role === "owner" ? ownerMenuIcons : defaultMenuIcons)[index]}
+                  width={20}
+                />
               </span>
               <p>{item}</p>
               <Image
@@ -134,7 +156,11 @@ function RoleDashboard({
                 aria-hidden="true"
                 className="role-dashboard-menu-chevron"
                 height={18}
-                src="/images/cashier-chevron-right.svg"
+                src={
+                  role === "owner"
+                    ? "/images/owner-menu-chevron.svg"
+                    : "/images/cashier-chevron-right.svg"
+                }
                 width={18}
               />
             </>
@@ -143,13 +169,17 @@ function RoleDashboard({
           const menuHref =
             role === "karyawan-gudang" && index === 0
               ? "/beranda/karyawan-gudang/pemeriksaan-stok/"
+              : role === "karyawan-gudang" && index === 1
+                ? "/beranda/karyawan-gudang/pengajuan-pemesanan/"
               : role === "karyawan-kasir" && index === 0
                 ? "/beranda/karyawan-kasir/cek-ketersediaan-obat/"
                 : role === "karyawan-kasir" && index === 1
                   ? "/beranda/karyawan-kasir/form-pemesanan/"
-                : role === "owner" && index === 0
-                  ? "/beranda/owner/informasi-stok-persediaan/"
-                  : null;
+                  : role === "owner" && index === 0
+                    ? "/beranda/owner/informasi-stok-persediaan/"
+                    : role === "owner" && index === 1
+                      ? "/beranda/owner/persetujuan-pengajuan-pemesanan/"
+                      : null;
 
           return menuHref ? (
             <a
