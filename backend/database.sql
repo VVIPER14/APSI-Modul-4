@@ -197,13 +197,13 @@ INSERT INTO Detail_Penerimaan (id_penerimaan, id_barang, jumlah_diterima) VALUES
 CREATE TABLE Detail_Pemeriksaan (
     id_pemeriksaan VARCHAR(255),
     id_barang VARCHAR(255),
-    stok_fisik INT,
+    stok INT,
     catatan TEXT,
     PRIMARY KEY (id_pemeriksaan, id_barang),
     FOREIGN KEY (id_pemeriksaan) REFERENCES Pemeriksaan_Stok(id_pemeriksaan),
     FOREIGN KEY (id_barang) REFERENCES Barang(id_barang)
 );
-INSERT INTO Detail_Pemeriksaan (id_pemeriksaan, id_barang, stok_fisik, catatan) VALUES
+INSERT INTO Detail_Pemeriksaan (id_pemeriksaan, id_barang, stok, catatan) VALUES
 ('PMK001', 'BRG001', 17, '-'),
 ('PMK001', 'BRG002', 10, '-'),
 ('PMK002', 'BRG003', 17, '-'),
@@ -236,4 +236,3 @@ INSERT INTO Detail_Transaksi (id_transaksi, id_barang, jumlah_jual) VALUES
 ('TRX005', 'BRG001', 15),
 ('TRX005', 'BRG009', 10),
 ('TRX005', 'BRG005', 1);
-

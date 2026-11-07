@@ -122,22 +122,38 @@ function RoleDashboard({
 
       <nav aria-label={`Menu ${roleLabels[role]}`} className="role-dashboard-menu">
         <h2>MENU</h2>
-        {menus.map((item, index) => (
-          <article className="role-dashboard-menu-item" key={item}>
-            <span aria-hidden="true" className="role-dashboard-menu-icon">
-              <Image alt="" height={20} src={menuIcons[index]} width={20} />
-            </span>
-            <p>{item}</p>
-            <Image
-              alt=""
-              aria-hidden="true"
-              className="role-dashboard-menu-chevron"
-              height={18}
-              src="/images/cashier-chevron-right.svg"
-              width={18}
-            />
-          </article>
-        ))}
+        {menus.map((item, index) => {
+          const menuContent = (
+            <>
+              <span aria-hidden="true" className="role-dashboard-menu-icon">
+                <Image alt="" height={20} src={menuIcons[index]} width={20} />
+              </span>
+              <p>{item}</p>
+              <Image
+                alt=""
+                aria-hidden="true"
+                className="role-dashboard-menu-chevron"
+                height={18}
+                src="/images/cashier-chevron-right.svg"
+                width={18}
+              />
+            </>
+          );
+
+          return role === "karyawan-gudang" && index === 0 ? (
+            <a
+              className="role-dashboard-menu-item"
+              href="/beranda/karyawan-gudang/pemeriksaan-stok/"
+              key={item}
+            >
+              {menuContent}
+            </a>
+          ) : (
+            <article className="role-dashboard-menu-item" key={item}>
+              {menuContent}
+            </article>
+          );
+        })}
       </nav>
     </main>
   );

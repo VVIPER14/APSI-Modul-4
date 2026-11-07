@@ -24,7 +24,7 @@ model barang {
 model detail_pemeriksaan {
   id_pemeriksaan   String           @db.VarChar(255)
   id_barang        String           @db.VarChar(255)
-  stok_fisik       Int
+  stok             Int
   catatan          String?          @db.VarChar(255)
   barang           barang           @relation(fields: [id_barang], references: [id_barang], onDelete: NoAction, onUpdate: NoAction)
   pemeriksaan_stok pemeriksaan_stok @relation(fields: [id_pemeriksaan], references: [id_pemeriksaan], onDelete: Cascade, onUpdate: NoAction)
