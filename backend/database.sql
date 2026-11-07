@@ -28,21 +28,21 @@ INSERT INTO Supplier (id_suplier, nama_supplier, alamat, no_telepon, email) VALU
 CREATE TABLE Barang (
     id_barang VARCHAR(255) PRIMARY KEY,
     nama_barang VARCHAR(255),
-    kategori INT,
+    kategori VARCHAR(255),
     satuan VARCHAR(100),
     stok_minimum INT,
     harga_jual DECIMAL(10, 2)
 );
 INSERT INTO Barang (id_barang, nama_barang, kategori, satuan, stok_minimum, harga_jual) VALUES
-('BRG001', 'Paracetamol 500 mg', 1, 'Strip', 30, 2500),
-('BRG002', 'Vitamin C 500 mg', 2, 'Botol', 15, 18000),
-('BRG003', 'Amoxicillin 500 mg', 3, 'Strip', 18, 7000),
-('BRG004', 'Ciprofloxacin 500 mg', 3, 'Strip', 18, 9000),
-('BRG005', 'OBH Sirup 100 ml', 4, 'Botol', 15, 16000),
-('BRG006', 'CTM 4 mg', 4, 'Strip', 20, 2000),
-('BRG007', 'Povidone Iodine 10% 30 ml', 5, 'Botol', 10, 12000),
-('BRG008', 'Kasa Steril 16x16 cm', 6, 'Pack', 40, 6000),
-('BRG009', 'Antasida DOEN', 4, 'Strip', 15, 3000);
+('BRG001', 'Paracetamol 500 mg', 'Obat Bebas', 'Strip', 30, 2500),
+('BRG002', 'Vitamin C 500 mg', 'Suplemen', 'Botol', 15, 18000),
+('BRG003', 'Amoxicillin 500 mg', 'Obat Keras', 'Strip', 18, 7000),
+('BRG004', 'Ciprofloxacin 500 mg', 'Obat Keras', 'Strip', 18, 9000),
+('BRG005', 'OBH Sirup 100 ml', 'Obat Bebas Terbatas', 'Botol', 15, 16000),
+('BRG006', 'CTM 4 mg', 'Obat Bebas Terbatas', 'Strip', 20, 2000),
+('BRG007', 'Povidone Iodine 10% 30 ml', 'Antiseptik', 'Botol', 10, 12000),
+('BRG008', 'Kasa Steril 16x16 cm', 'Alat Kesehatan', 'Pack', 40, 6000),
+('BRG009', 'Antasida DOEN', 'Obat Bebas Terbatas', 'Strip', 15, 3000);
 
 -- 2.1 Data Pengajuan
 CREATE TABLE Pengajuan (

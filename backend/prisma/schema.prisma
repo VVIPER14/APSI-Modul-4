@@ -10,7 +10,7 @@ datasource db {
 model barang {
   id_barang          String               @id @db.VarChar(255)
   nama_barang        String               @db.VarChar(255)
-  kategori           Int
+  kategori           String               @db.VarChar(255)
   satuan             String               @db.VarChar(255)
   stok_minimum       Int?                 @default(0)
   harga_jual         Decimal              @db.Decimal(19, 0)

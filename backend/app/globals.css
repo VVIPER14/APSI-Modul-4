@@ -1479,23 +1479,27 @@ input {
 }
 
 .stock-info-col-id {
-  width: 110px;
+  width: 100px;
 }
 
 .stock-info-col-name {
-  width: 280px;
+  width: 225px;
 }
 
 .stock-info-col-category {
-  width: 190px;
+  width: 170px;
 }
 
 .stock-info-col-unit {
-  width: 120px;
+  width: 100px;
+}
+
+.stock-info-col-stock {
+  width: 125px;
 }
 
 .stock-info-col-minimum {
-  width: 180px;
+  width: 150px;
 }
 
 .stock-info-col-price {
@@ -1503,7 +1507,7 @@ input {
 }
 
 .stock-info-col-status {
-  width: 162px;
+  width: 172px;
 }
 
 .stock-info-table th {
@@ -1602,6 +1606,11 @@ input {
 }
 
 .stock-info-table .stock-info-minimum {
+  color: #fff;
+  font-weight: 600;
+}
+
+.stock-info-table .stock-info-stock {
   color: #fff;
   font-weight: 600;
 }

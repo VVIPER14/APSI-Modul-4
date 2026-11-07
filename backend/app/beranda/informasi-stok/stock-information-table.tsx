@@ -6,14 +6,14 @@ import { useMemo, useState } from "react";
 export type StockInformationItem = {
   id_barang: string;
   nama_barang: string;
-  kategori: number;
+  kategori: string;
   satuan: string;
   stok_minimum: number;
   stok: number;
   harga_jual: string;
 };
 
-type SortKey = keyof Omit<StockInformationItem, "stok"> | "status";
+type SortKey = keyof StockInformationItem | "status";
 type SortDirection = "ascending" | "descending";
 
 const columns: { key: SortKey; label: string }[] = [
@@ -21,6 +21,7 @@ const columns: { key: SortKey; label: string }[] = [
   { key: "nama_barang", label: "Nama Barang" },
   { key: "kategori", label: "Kategori" },
   { key: "satuan", label: "Satuan" },
+  { key: "stok", label: "Stok" },
   { key: "stok_minimum", label: "Stok Minimum" },
   { key: "harga_jual", label: "Harga Satuan" },
   { key: "status", label: "Status" },
@@ -138,6 +139,7 @@ export default function StockInformationTable({
             <col className="stock-info-col-name" />
             <col className="stock-info-col-category" />
             <col className="stock-info-col-unit" />
+            <col className="stock-info-col-stock" />
             <col className="stock-info-col-minimum" />
             <col className="stock-info-col-price" />
             <col className="stock-info-col-status" />
@@ -196,6 +198,7 @@ export default function StockInformationTable({
                     <td className="stock-info-name">{item.nama_barang}</td>
                     <td>{item.kategori}</td>
                     <td>{item.satuan}</td>
+                    <td className="stock-info-stock">{item.stok}</td>
                     <td className="stock-info-minimum">
                       {item.stok_minimum}
                     </td>
