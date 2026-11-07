@@ -145,6 +145,8 @@ function RoleDashboard({
               ? "/beranda/karyawan-gudang/pemeriksaan-stok/"
               : role === "karyawan-kasir" && index === 0
                 ? "/beranda/karyawan-kasir/cek-ketersediaan-obat/"
+                : role === "karyawan-kasir" && index === 1
+                  ? "/beranda/karyawan-kasir/form-pemesanan/"
                 : role === "owner" && index === 0
                   ? "/beranda/owner/informasi-stok-persediaan/"
                   : null;

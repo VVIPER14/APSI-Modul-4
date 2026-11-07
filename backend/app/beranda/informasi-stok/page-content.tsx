@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { dashboardPathForRole, getCurrentSession } from "@/app/lib/auth";
+import { getAvailableStock } from "@/app/lib/inventory";
 import { prisma } from "@/app/lib/prisma";
 import StockInformationTable, {
   type StockInformationItem,
@@ -40,16 +41,9 @@ export default async function StockInformationContent({
       satuan: true,
       stok_minimum: true,
       harga_jual: true,
-      detail_pemeriksaan: {
-        orderBy: [
-          { pemeriksaan_stok: { tanggal_pemeriksaan: "desc" } },
-          { id_pemeriksaan: "desc" },
-        ],
-        take: 1,
-        select: { stok: true },
-      },
     },
   });
+  const currentStock = await getAvailableStock(prisma);
 
   const items: StockInformationItem[] = products.map((product) => ({
     id_barang: product.id_barang,
@@ -57,7 +51,7 @@ export default async function StockInformationContent({
     kategori: product.kategori,
     satuan: product.satuan,
     stok_minimum: product.stok_minimum ?? 0,
-    stok: product.detail_pemeriksaan[0]?.stok ?? 0,
+    stok: currentStock.get(product.id_barang) ?? 0,
     harga_jual: product.harga_jual.toString(),
   }));
 

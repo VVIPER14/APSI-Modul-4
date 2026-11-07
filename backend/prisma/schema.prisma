@@ -65,11 +65,12 @@ model detail_pengajuan {
 }
 
 model detail_transaksi {
-  id_transaksi String    @db.VarChar(255)
-  id_barang    String    @db.VarChar(255)
-  jumlah_jual  Int
-  barang       barang    @relation(fields: [id_barang], references: [id_barang], onDelete: NoAction, onUpdate: NoAction)
-  transaksi    transaksi @relation(fields: [id_transaksi], references: [id_transaksi], onDelete: Cascade, onUpdate: NoAction)
+  id_transaksi      String    @db.VarChar(255)
+  id_barang         String    @db.VarChar(255)
+  jumlah_jual       Int
+  harga_satuan_jual Decimal? @db.Decimal(19, 0)
+  barang            barang    @relation(fields: [id_barang], references: [id_barang], onDelete: NoAction, onUpdate: NoAction)
+  transaksi         transaksi @relation(fields: [id_transaksi], references: [id_transaksi], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([id_transaksi, id_barang])
 }

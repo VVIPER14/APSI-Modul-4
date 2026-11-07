@@ -220,19 +220,20 @@ CREATE TABLE Detail_Transaksi (
     id_transaksi VARCHAR(255),
     id_barang VARCHAR(255),
     jumlah_jual INT,
+    harga_satuan_jual DECIMAL(19, 0),
     PRIMARY KEY (id_transaksi, id_barang),
     FOREIGN KEY (id_transaksi) REFERENCES Transaksi(id_transaksi),
     FOREIGN KEY (id_barang) REFERENCES Barang(id_barang)
 );
-INSERT INTO Detail_Transaksi (id_transaksi, id_barang, jumlah_jual) VALUES
-('TRX001', 'BRG001', 10),
-('TRX001', 'BRG002', 2),
-('TRX002', 'BRG003', 10),
-('TRX002', 'BRG004', 6),
-('TRX003', 'BRG005', 3),
-('TRX003', 'BRG006', 20),
-('TRX004', 'BRG007', 4),
-('TRX004', 'BRG008', 5),
-('TRX005', 'BRG001', 15),
-('TRX005', 'BRG009', 10),
-('TRX005', 'BRG005', 1);
+INSERT INTO Detail_Transaksi (id_transaksi, id_barang, jumlah_jual, harga_satuan_jual) VALUES
+('TRX001', 'BRG001', 10, 2500),
+('TRX001', 'BRG002', 2, 18000),
+('TRX002', 'BRG003', 10, 7000),
+('TRX002', 'BRG004', 6, 9000),
+('TRX003', 'BRG005', 3, 16000),
+('TRX003', 'BRG006', 20, 2000),
+('TRX004', 'BRG007', 4, 12000),
+('TRX004', 'BRG008', 5, 6000),
+('TRX005', 'BRG001', 15, 2500),
+('TRX005', 'BRG009', 10, 3000),
+('TRX005', 'BRG005', 1, 16000);
