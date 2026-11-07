@@ -85,6 +85,8 @@ export async function POST(request: Request) {
     );
   }
 
+  let authStep = "database lookup";
+
   try {
     const user = await prisma.pengguna.findFirst({
       where: { username: credentials.username.trim() },
@@ -104,6 +106,7 @@ export async function POST(request: Request) {
       );
     }
 
+    authStep = "password verification";
     const verification = await verifyPassword(
       credentials.password,
       user.password,
@@ -117,6 +120,7 @@ export async function POST(request: Request) {
     }
 
     if (verification.needsRehash) {
+      authStep = "legacy password migration";
       const migration = await prisma.pengguna.updateMany({
         where: {
           id_pengguna: user.id_pengguna,
@@ -160,6 +164,7 @@ export async function POST(request: Request) {
       );
     }
 
+    authStep = "session creation";
     const token = createSessionToken({
       userId: user.id_pengguna,
       name: user.nama_pengguna,
@@ -178,7 +183,17 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
-    console.error("Unable to authenticate against the user database.", error);
+    console.error(`Login failed during ${authStep}.`, error);
+
+    if (error instanceof Error && error.message.startsWith("AUTH_SECRET")) {
+      return NextResponse.json(
+        {
+          error:
+            "Konfigurasi login Vercel belum lengkap. Pastikan AUTH_SECRET diatur dengan nilai minimal 32 karakter.",
+        },
+        { status: 503 },
+      );
+    }
 
     return NextResponse.json(
       { error: "Layanan login sedang bermasalah. Coba lagi nanti." },

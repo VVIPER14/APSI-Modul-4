@@ -27,7 +27,7 @@ export async function generateMetadata({
   };
 }
 
-const dashboardCards: Record<string, string[]> = {
+const dashboardCards: Record<string, [string, string, string]> = {
   "karyawan-kasir": [
     "Cek Ketersediaan Obat",
     "Buat Pesanan Baru",
@@ -45,6 +45,103 @@ const dashboardCards: Record<string, string[]> = {
   ],
   admin: ["Data Master", "Verifikasi Data", "Laporan Persediaan"],
 };
+
+const roleDescriptions: Record<string, string> = {
+  "karyawan-kasir":
+    "Beranda operasional kasir untuk pencarian obat, pembuatan pesanan, dan pemantauan transaksi.",
+  "karyawan-gudang":
+    "Beranda operasional gudang untuk pemantauan stok, pengajuan, dan penerimaan barang.",
+  owner:
+    "Beranda operasional owner untuk pemantauan stok, pengajuan, dan laporan persediaan.",
+  admin:
+    "Beranda operasional admin untuk pengelolaan data master, verifikasi data, dan pelaporan persediaan.",
+};
+
+const menuIcons: [string, string, string] = [
+  "/images/cashier-search.svg",
+  "/images/cashier-plus-circle.svg",
+  "/images/cashier-package.svg",
+];
+
+function RoleDashboard({
+  role,
+  name,
+  description,
+  menus,
+}: {
+  role: string;
+  name: string;
+  description: string;
+  menus: string[];
+}) {
+  return (
+    <main className="role-dashboard">
+      <Image
+        alt=""
+        aria-hidden="true"
+        className="role-dashboard-background"
+        fill
+        priority
+        sizes="100vw"
+        src="/images/cashier-background.png"
+      />
+      <div aria-hidden="true" className="role-dashboard-overlay" />
+
+      <header className="role-dashboard-header">
+        <div className="role-dashboard-brand">
+          <Image
+            alt=""
+            aria-hidden="true"
+            height={31}
+            src="/images/cashier-brand-mark.png"
+            width={31}
+          />
+          <div>
+            <p>APOTEK</p>
+            <span>Media Medika</span>
+          </div>
+        </div>
+        <LogoutButton />
+      </header>
+
+      <section aria-label="Profil pengguna" className="role-dashboard-hero">
+        <div className="role-dashboard-hero-copy">
+          <span className="role-dashboard-role">{roleLabels[role]}</span>
+          <h1>Selamat datang, {name}</h1>
+          <p>{description}</p>
+        </div>
+        <div aria-hidden="true" className="role-dashboard-avatar">
+          <Image
+            alt=""
+            height={72}
+            src="/images/cashier-avatar.png"
+            width={72}
+          />
+        </div>
+      </section>
+
+      <nav aria-label={`Menu ${roleLabels[role]}`} className="role-dashboard-menu">
+        <h2>MENU</h2>
+        {menus.map((item, index) => (
+          <article className="role-dashboard-menu-item" key={item}>
+            <span aria-hidden="true" className="role-dashboard-menu-icon">
+              <Image alt="" height={20} src={menuIcons[index]} width={20} />
+            </span>
+            <p>{item}</p>
+            <Image
+              alt=""
+              aria-hidden="true"
+              className="role-dashboard-menu-chevron"
+              height={18}
+              src="/images/cashier-chevron-right.svg"
+              width={18}
+            />
+          </article>
+        ))}
+      </nav>
+    </main>
+  );
+}
 
 export default async function DashboardPage({
   params,
@@ -71,65 +168,11 @@ export default async function DashboardPage({
   }
 
   return (
-    <main className="dashboard-screen">
-      <Image
-        alt=""
-        className="dashboard-background"
-        fill
-        priority
-        sizes="100vw"
-        src="/images/dashboard-background.png"
-      />
-      <header className="dashboard-brand">
-        <Image
-          alt=""
-          aria-hidden="true"
-          height={31}
-          src="/images/pharmacy-mark.png"
-          width={31}
-        />
-        <p>
-          <span>APOTEK</span> Media Medika
-        </p>
-      </header>
-
-      <section aria-label="Profil pengguna" className="dashboard-profile">
-        <div className="dashboard-user">
-          <Image
-            alt=""
-            aria-hidden="true"
-            className="dashboard-avatar"
-            height={124}
-            src="/images/dashboard-avatar.png"
-            width={124}
-          />
-          <h1>{session.name}</h1>
-        </div>
-        <hr />
-        <p>Role : {session.role}</p>
-      </section>
-
-      <nav
-        aria-label={`Menu ${session.role}`}
-        className="dashboard-menu"
-        data-role={session.role}
-      >
-        {cards.map((card) => (
-          <article className="dashboard-card" key={card}>
-            <h2>{card}</h2>
-            {session.role === "Karyawan Kasir" &&
-              card === "Cek Riwayat Transaksi" && (
-                <p>
-                  Cek riwayat transaksi untuk melihat jumlah obat yang terjual
-                  hingga melihat total pendapatan.
-                </p>
-              )}
-          </article>
-        ))}
-      </nav>
-
-      <LogoutButton />
-      <div aria-hidden="true" className="dashboard-indicator" />
-    </main>
+    <RoleDashboard
+      description={roleDescriptions[role]}
+      menus={cards}
+      name={session.name}
+      role={role}
+    />
   );
 }
