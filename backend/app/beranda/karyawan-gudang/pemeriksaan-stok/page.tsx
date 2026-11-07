@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { dashboardPathForRole, getCurrentSession } from "@/app/lib/auth";
@@ -11,7 +12,24 @@ export const metadata: Metadata = {
   title: "Pemeriksaan Stok | Apotek Media Medika",
 };
 
-export default async function StockCheckPage() {
+export default function StockCheckPage() {
+  return (
+    <Suspense
+      fallback={
+        <main
+          aria-busy="true"
+          className="role-dashboard stock-check-screen"
+        >
+          <p className="stock-check-loading">Memuat pemeriksaan stok...</p>
+        </main>
+      }
+    >
+      <StockCheckContent />
+    </Suspense>
+  );
+}
+
+async function StockCheckContent() {
   await connection();
   const session = await getCurrentSession();
 

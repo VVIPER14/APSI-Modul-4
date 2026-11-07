@@ -856,6 +856,16 @@ input {
   padding-bottom: 32px;
 }
 
+.stock-check-loading {
+  width: min(1296px, calc(100% - 64px));
+  margin: 32px auto;
+  padding: 28px;
+  border: 1px solid rgb(255 255 255 / 13%);
+  border-radius: 20px;
+  background: rgb(255 255 255 / 5%);
+  color: rgb(255 255 255 / 80%);
+}
+
 .stock-check-screen .role-dashboard-background {
   object-fit: fill;
   object-position: center bottom;
