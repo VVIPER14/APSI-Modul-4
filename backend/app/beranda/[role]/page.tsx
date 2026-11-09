@@ -41,6 +41,7 @@ const dashboardCards: Record<string, string[]> = {
     "Laporan Stok Barang",
     "Pengajuan Pemesanan",
     "Laporan Keuangan",
+    "Riwayat Pemesanan",
   ],
   admin: ["Data Master", "Verifikasi Data", "Laporan Persediaan"],
 };
@@ -51,7 +52,7 @@ const roleDescriptions: Record<string, string> = {
   "karyawan-gudang":
     "Beranda operasional gudang untuk pemantauan stok, pengajuan pemesanan, dan penerimaan barang.",
   owner:
-    "Beranda operasional owner untuk pemantauan stok, pengajuan, dan laporan persediaan.",
+    "Beranda operasional owner untuk pemantauan stok, pengajuan, laporan keuangan, dan riwayat pemesanan.",
   admin:
     "Beranda operasional admin untuk pengelolaan data master, verifikasi data, dan pelaporan persediaan.",
 };
@@ -65,9 +66,10 @@ const cashierMenuIcons = [
   "/images/cashier-plus-circle.svg",
   "/images/cashier-package.svg",
 ];
-const ownerMenuIcons: [string, string, string] = [
+const ownerMenuIcons = [
   "/images/owner-menu-search.svg",
   "/images/owner-menu-plus.svg",
+  "/images/owner-menu-package.svg",
   "/images/owner-menu-package.svg",
 ];
 
@@ -192,6 +194,8 @@ function RoleDashboard({
                     ? "/beranda/owner/persetujuan-pengajuan-pemesanan/"
                     : role === "owner" && index === 2
                       ? "/beranda/owner/laporan-keuangan/"
+                      : role === "owner" && index === 3
+                        ? "/beranda/owner/riwayat-pemesanan/"
                       : null;
 
           return menuHref ? (

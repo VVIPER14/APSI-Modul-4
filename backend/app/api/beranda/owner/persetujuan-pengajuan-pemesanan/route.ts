@@ -35,16 +35,21 @@ export async function POST(request: Request) {
     typeof body.id_pengajuan !== "string" ||
     !body.id_pengajuan.trim() ||
     body.id_pengajuan.length > 255 ||
-    typeof body.id_supplier !== "string" ||
-    !body.id_supplier.trim() ||
-    body.id_supplier.length > 255
+    (body.id_supplier !== undefined &&
+      body.id_supplier !== null &&
+      (typeof body.id_supplier !== "string" ||
+        !body.id_supplier.trim() ||
+        body.id_supplier.length > 255)) ||
+    (body.action === "approve" &&
+      (typeof body.id_supplier !== "string" || !body.id_supplier.trim()))
   ) {
     return Response.json({ error: "Keputusan pengajuan tidak valid." }, { status: 400 });
   }
 
   const idPengajuan = body.id_pengajuan;
   const action = body.action;
-  const supplierId = body.id_supplier;
+  const supplierId =
+    typeof body.id_supplier === "string" ? body.id_supplier : null;
 
   try {
     const result = await prisma.$transaction(async (transaction) => {
@@ -82,19 +87,23 @@ export async function POST(request: Request) {
         };
       }
 
-      const supplier = await transaction.supplier.findUnique({
-        where: { id_suplier: supplierId },
-        select: { nama_supplier: true },
-      });
+      const supplier = supplierId
+        ? await transaction.supplier.findUnique({
+            where: { id_suplier: supplierId },
+            select: { nama_supplier: true },
+          })
+        : null;
 
-      if (!supplier) {
+      if (supplierId && !supplier) {
         return { error: "Supplier tidak ditemukan.", status: 404 };
       }
 
-      await transaction.detail_pengajuan.updateMany({
-        where: { id_pengajuan: idPengajuan },
-        data: { id_supplier: supplierId },
-      });
+      if (supplierId) {
+        await transaction.detail_pengajuan.updateMany({
+          where: { id_pengajuan: idPengajuan },
+          data: { id_supplier: supplierId },
+        });
+      }
 
       if (action === "reject") {
         await transaction.pengajuan.update({
@@ -109,8 +118,12 @@ export async function POST(request: Request) {
           id_pengajuan: idPengajuan,
           status: proposalStatuses.rejected,
           id_supplier: supplierId,
-          nama_supplier: supplier.nama_supplier,
+          nama_supplier: supplier?.nama_supplier ?? null,
         };
+      }
+
+      if (!supplier || !supplierId) {
+        return { error: "Supplier tidak ditemukan.", status: 404 };
       }
 
       const [nextOrder] = await transaction.$queryRaw<

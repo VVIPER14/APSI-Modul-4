@@ -35,6 +35,8 @@ type ApprovalSupplier = {
 
 type SortKey =
   | "id_pengajuan"
+  | "tanggal_pengajuan"
+  | "nama_pengaju"
   | "id_barang"
   | "nama_barang"
   | "kategori"
@@ -42,10 +44,13 @@ type SortKey =
   | "harga_satuan"
   | "jumlah_pesan"
   | "subtotal"
+  | "harga_total"
   | "nama_supplier";
 
 const tableHeaders: { label: string; key: SortKey }[] = [
   { label: "ID Pengajuan", key: "id_pengajuan" },
+  { label: "Tanggal Pengajuan", key: "tanggal_pengajuan" },
+  { label: "Nama Pengaju", key: "nama_pengaju" },
   { label: "ID Barang", key: "id_barang" },
   { label: "Nama Barang", key: "nama_barang" },
   { label: "Kategori", key: "kategori" },
@@ -53,6 +58,7 @@ const tableHeaders: { label: string; key: SortKey }[] = [
   { label: "Harga Satuan", key: "harga_satuan" },
   { label: "Jumlah Pesan", key: "jumlah_pesan" },
   { label: "Sub Total Harga", key: "subtotal" },
+  { label: "Harga Total", key: "harga_total" },
   { label: "Supplier", key: "nama_supplier" },
 ];
 
@@ -69,7 +75,7 @@ function subtotal(item: ApprovalItem) {
 function compareItems(
   left: ApprovalItem,
   right: ApprovalItem,
-  key: Exclude<SortKey, "id_pengajuan">,
+  key: SortKey,
 ) {
   if (key === "harga_satuan" || key === "subtotal") {
     const leftValue =
@@ -84,6 +90,15 @@ function compareItems(
     return left.jumlah_pesan - right.jumlah_pesan;
   }
 
+  if (
+    key === "id_pengajuan" ||
+    key === "tanggal_pengajuan" ||
+    key === "nama_pengaju" ||
+    key === "harga_total"
+  ) {
+    return 0;
+  }
+
   return (left[key] ?? "").toString().localeCompare((right[key] ?? "").toString());
 }
 
@@ -92,7 +107,7 @@ function compareProposalItems(
   right: ApprovalItem,
   key: SortKey,
 ) {
-  return key === "id_pengajuan" ? 0 : compareItems(left, right, key);
+  return compareItems(left, right, key);
 }
 
 function formatDate(value: string) {
@@ -100,6 +115,7 @@ function formatDate(value: string) {
     day: "2-digit",
     month: "short",
     year: "numeric",
+    timeZone: "UTC",
   }).format(new Date(value));
 }
 
@@ -159,6 +175,23 @@ export default function ApprovalTable({
           return direction * left.id_pengajuan.localeCompare(right.id_pengajuan);
         }
 
+        if (sortKey === "tanggal_pengajuan") {
+          return (
+            direction *
+            left.tanggal_pengajuan.localeCompare(right.tanggal_pengajuan)
+          );
+        }
+
+        if (sortKey === "nama_pengaju") {
+          return direction * left.nama_pengaju.localeCompare(right.nama_pengaju);
+        }
+
+        if (sortKey === "harga_total") {
+          const leftTotal = BigInt(left.harga_total);
+          const rightTotal = BigInt(right.harga_total);
+          return direction * (leftTotal < rightTotal ? -1 : leftTotal > rightTotal ? 1 : 0);
+        }
+
         const leftItem = left.items[0];
         const rightItem = right.items[0];
 
@@ -186,7 +219,7 @@ export default function ApprovalTable({
     setBusyProposalId(proposal.id_pengajuan);
     const selectedSupplierId = supplierByProposal[proposal.id_pengajuan] ?? "";
 
-    if (!selectedSupplierId) {
+    if (action === "approve" && !selectedSupplierId) {
       setError("Pilih supplier yang sudah dihubungi sebelum memutuskan.");
       setBusyProposalId(null);
       return;
@@ -201,7 +234,7 @@ export default function ApprovalTable({
           body: JSON.stringify({
             action,
             id_pengajuan: proposal.id_pengajuan,
-            id_supplier: selectedSupplierId,
+            id_supplier: selectedSupplierId || null,
           }),
         },
       );
@@ -250,30 +283,22 @@ export default function ApprovalTable({
     }
   }
 
-  return (
-    <section aria-label="Daftar persetujuan pengajuan" className="approval-panel">
-      <label className="proposal-search approval-search">
-        <Image
-          alt=""
-          aria-hidden="true"
-          height={20}
-          src="/images/approval-search.svg"
-          width={20}
-        />
-        <input
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Cari ID pengajuan"
-          type="search"
-          value={search}
-        />
-      </label>
+  const pendingProposals = visibleProposals.filter(
+    (proposal) =>
+      proposal.status_penyetujuan === proposalStatuses.processing,
+  );
+  const historyProposals = visibleProposals.filter(
+    (proposal) =>
+      proposal.status_penyetujuan === proposalStatuses.approved ||
+      proposal.status_penyetujuan === proposalStatuses.rejected,
+  );
 
-      {error && (
-        <p className="proposal-error" role="alert">
-          {error}
-        </p>
-      )}
-
+  function renderTable(
+    tableProposals: ApprovalProposal[],
+    allowDecision: boolean,
+    emptyMessage: string,
+  ) {
+    return (
       <div className="approval-table-viewport">
         <table className="approval-table">
           <thead>
@@ -312,118 +337,157 @@ export default function ApprovalTable({
               <th className="approval-status-heading">Status / Keputusan</th>
             </tr>
           </thead>
-          {visibleProposals.map((proposal) => {
-            const items = proposal.items.length > 0 ? proposal.items : [null];
-            const isProcessing =
-              proposal.status_penyetujuan === proposalStatuses.processing;
-            const isBusy = busyProposalId === proposal.id_pengajuan;
+          <tbody>
+            {tableProposals.flatMap((proposal) => {
+              const items = proposal.items.length ? proposal.items : [null];
+              const isBusy = busyProposalId === proposal.id_pengajuan;
 
-            return (
-              <tbody key={proposal.id_pengajuan}>
-                {items.map((item, index) => (
-                  <tr key={`${proposal.id_pengajuan}-${item?.id_barang ?? "empty"}`}>
-                    {index === 0 && (
-                      <td className="approval-proposal-id" rowSpan={items.length}>
-                        <strong>{proposal.id_pengajuan}</strong>
-                        <small>{formatDate(proposal.tanggal_pengajuan)}</small>
-                        <small>Pengaju: {proposal.nama_pengaju}</small>
-                      </td>
-                    )}
-                    <td>{item?.id_barang ?? "—"}</td>
-                    <td>{item?.nama_barang ?? "Tidak ada rincian barang"}</td>
-                    <td>{item?.kategori ?? "—"}</td>
-                    <td>{item?.satuan ?? "—"}</td>
-                    <td>{item ? formatCurrency(item.harga_satuan) : "—"}</td>
-                    <td>{item?.jumlah_pesan ?? "—"}</td>
-                    <td>{item ? formatCurrency(subtotal(item)) : "—"}</td>
-                    <td>{item?.nama_supplier ?? "—"}</td>
-                    {index === 0 && (
-                      <td
-                        className="approval-decision-cell"
-                        rowSpan={items.length}
-                      >
-                        <span
-                          className={`proposal-status proposal-status-${proposal.status_penyetujuan ?? "unknown"}`}
-                        >
-                          {proposalStatusLabel(proposal.status_penyetujuan)}
-                        </span>
-                        {proposal.id_pemesanan ? (
-                          <small>ID Pemesanan: {proposal.id_pemesanan}</small>
-                        ) : null}
-                        {isProcessing && (
-                          <>
-                            <label className="approval-supplier-field">
-                              Supplier yang dihubungi
-                              <select
-                                disabled={isBusy}
-                                onChange={(event) =>
-                                  setSupplierByProposal((current) => ({
-                                    ...current,
-                                    [proposal.id_pengajuan]:
-                                      event.target.value,
-                                  }))
-                                }
-                                value={
-                                  supplierByProposal[proposal.id_pengajuan] ??
-                                  ""
-                                }
-                              >
-                                <option value="">Pilih supplier</option>
-                                {suppliers.map((supplier) => (
-                                  <option
-                                    key={supplier.id_supplier}
-                                    value={supplier.id_supplier}
-                                  >
-                                    {supplier.nama_supplier}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                            <div className="approval-decision-buttons">
-                            <button
-                              className="approval-reject-button"
-                              disabled={isBusy}
-                              onClick={() => void decide(proposal, "reject")}
-                              type="button"
-                            >
-                              Supplier tidak tersedia — Tolak
-                            </button>
-                            <button
-                              className="approval-approve-button"
-                              disabled={isBusy}
-                              onClick={() => void decide(proposal, "approve")}
-                              type="button"
-                            >
-                              {isBusy ? "..." : "Konfirmasi Supplier & Setujui"}
-                            </button>
-                            </div>
-                          </>
-                        )}
-                      </td>
-                    )}
-                  </tr>
-                ))}
-                <tr className="approval-total-row">
-                  <td colSpan={7}>Total Pengajuan</td>
+              return items.map((item, index) => (
+                <tr
+                  key={`${proposal.id_pengajuan}-${item?.id_barang ?? `empty-${index}`}`}
+                >
+                  <td>{proposal.id_pengajuan}</td>
+                  <td>{formatDate(proposal.tanggal_pengajuan)}</td>
+                  <td>{proposal.nama_pengaju}</td>
+                  <td>{item?.id_barang ?? "—"}</td>
+                  <td>{item?.nama_barang ?? "Tidak ada rincian barang"}</td>
+                  <td>{item?.kategori ?? "—"}</td>
+                  <td>{item?.satuan ?? "—"}</td>
+                  <td>{item ? formatCurrency(item.harga_satuan) : "—"}</td>
+                  <td>{item?.jumlah_pesan ?? "—"}</td>
+                  <td>{item ? formatCurrency(subtotal(item)) : "—"}</td>
                   <td>{formatCurrency(proposal.harga_total)}</td>
-                  <td colSpan={2} />
+                  <td>
+                    {allowDecision ? (
+                      <label className="approval-supplier-field">
+                        <span className="sr-only">Supplier yang dihubungi</span>
+                        <select
+                          aria-label={`Supplier untuk ${proposal.id_pengajuan}`}
+                          disabled={isBusy}
+                          onChange={(event) =>
+                            setSupplierByProposal((current) => ({
+                              ...current,
+                              [proposal.id_pengajuan]: event.target.value,
+                            }))
+                          }
+                          value={
+                            supplierByProposal[proposal.id_pengajuan] ?? ""
+                          }
+                        >
+                          <option value="">Pilih supplier</option>
+                          {suppliers.map((supplier) => (
+                            <option
+                              key={supplier.id_supplier}
+                              value={supplier.id_supplier}
+                            >
+                              {supplier.nama_supplier}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : (
+                      item?.nama_supplier ?? "—"
+                    )}
+                  </td>
+                  <td className="approval-decision-cell">
+                    <span
+                      className={`proposal-status proposal-status-${proposal.status_penyetujuan ?? "unknown"}`}
+                    >
+                      {proposalStatusLabel(proposal.status_penyetujuan)}
+                    </span>
+                    {proposal.id_pemesanan ? (
+                      <small>ID Pemesanan: {proposal.id_pemesanan}</small>
+                    ) : null}
+                    {allowDecision ? (
+                      <div className="approval-decision-buttons">
+                        <button
+                          className="approval-reject-button"
+                          disabled={isBusy}
+                          onClick={() => void decide(proposal, "reject")}
+                          type="button"
+                        >
+                          {isBusy ? "..." : "Supplier tidak tersedia"}
+                        </button>
+                        <button
+                          className="approval-approve-button"
+                          disabled={isBusy}
+                          onClick={() => void decide(proposal, "approve")}
+                          type="button"
+                        >
+                          {isBusy ? "..." : "Konfirmasi & Setujui"}
+                        </button>
+                      </div>
+                    ) : null}
+                  </td>
                 </tr>
-              </tbody>
-            );
-          })}
-          {visibleProposals.length === 0 && (
-            <tbody>
+              ));
+            })}
+            {tableProposals.length === 0 ? (
               <tr>
-                <td className="proposal-empty-cell" colSpan={10}>
-                  {search
-                    ? "Pengajuan tidak ditemukan."
-                    : "Belum ada pengajuan yang perlu ditinjau."}
+                <td className="proposal-empty-cell" colSpan={13}>
+                  {search ? "Pengajuan tidak ditemukan." : emptyMessage}
                 </td>
               </tr>
-            </tbody>
-          )}
+            ) : null}
+          </tbody>
         </table>
       </div>
+    );
+  }
+
+  return (
+    <section aria-label="Daftar persetujuan pengajuan" className="approval-panel">
+      <label className="proposal-search approval-search">
+        <Image
+          alt=""
+          aria-hidden="true"
+          height={20}
+          src="/images/approval-search.svg"
+          width={20}
+        />
+        <input
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Cari ID, pengaju, atau barang"
+          type="search"
+          value={search}
+        />
+      </label>
+
+      {error ? (
+        <p className="proposal-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+
+      <section aria-labelledby="owner-pending-proposals" className="procurement-section">
+        <header className="procurement-section-heading">
+          <div>
+            <h2 id="owner-pending-proposals">Pengajuan Perlu Ditinjau</h2>
+            <p>Tentukan supplier setelah dikonfirmasi, lalu setujui atau tolak.</p>
+          </div>
+          <span>{pendingProposals.length} pengajuan</span>
+        </header>
+        {renderTable(
+          pendingProposals,
+          true,
+          "Belum ada pengajuan yang menunggu keputusan.",
+        )}
+      </section>
+
+      <section aria-labelledby="owner-proposal-history" className="procurement-section">
+        <header className="procurement-section-heading">
+          <div>
+            <h2 id="owner-proposal-history">Riwayat Persetujuan</h2>
+            <p>Pengajuan yang sudah disetujui atau ditolak.</p>
+          </div>
+          <span>{historyProposals.length} pengajuan</span>
+        </header>
+        {renderTable(
+          historyProposals,
+          false,
+          "Belum ada riwayat keputusan pengajuan.",
+        )}
+      </section>
     </section>
   );
 }

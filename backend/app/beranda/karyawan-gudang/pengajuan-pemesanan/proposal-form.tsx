@@ -155,6 +155,17 @@ export default function ProposalForm({
       (left, right) => direction * compareRows(left, right, sortKey),
     );
   }, [rows, search, sortDirection, sortKey]);
+  const draftRows = visibleRows.filter(
+    (row) => row.proposal.status_penyetujuan === proposalStatuses.draft,
+  );
+  const submittedRows = visibleRows.filter(
+    (row) => row.proposal.status_penyetujuan === proposalStatuses.processing,
+  );
+  const historyRows = visibleRows.filter(
+    (row) =>
+      row.proposal.status_penyetujuan === proposalStatuses.approved ||
+      row.proposal.status_penyetujuan === proposalStatuses.rejected,
+  );
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -382,49 +393,12 @@ export default function ProposalForm({
     }
   }
 
-  return (
-    <section aria-label="Daftar pengajuan pemesanan" className="proposal-panel">
-      <div className="proposal-toolbar">
-        <label className="proposal-search">
-          <Image
-            alt=""
-            aria-hidden="true"
-            height={20}
-            src="/images/proposal-search.svg"
-            width={20}
-          />
-          <input
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Cari nama atau ID barang"
-            type="search"
-            value={search}
-          />
-        </label>
-        <button
-          className="proposal-add-button"
-          disabled={isSaving || products.length === 0}
-          onClick={() => {
-            setError(null);
-            setDialogOpen(true);
-          }}
-          type="button"
-        >
-          + Tambah Barang
-        </button>
-      </div>
-
-      {activeDraft && (
-        <p className="proposal-draft-label">
-          Draft aktif: <strong>{activeDraft.id_pengajuan}</strong>
-        </p>
-      )}
-
-      {error && (
-        <p className="proposal-error" role="alert">
-          {error}
-        </p>
-      )}
-
+  function renderProposalTable(
+    tableRows: (ProposalItem & { proposal: ProposalRecord })[],
+    emptyMessage: string,
+    showDraftActions = false,
+  ) {
+    return (
       <div className="proposal-table-viewport">
         <table className="proposal-table">
           <thead>
@@ -464,7 +438,7 @@ export default function ProposalForm({
             </tr>
           </thead>
           <tbody>
-            {visibleRows.map((row) => {
+            {tableRows.map((row) => {
               const isActiveDraft =
                 row.proposal.id_pengajuan === activeDraftId &&
                 row.proposal.status_penyetujuan === proposalStatuses.draft;
@@ -481,7 +455,7 @@ export default function ProposalForm({
                   <td>{formatCurrency(row.harga_satuan)}</td>
                   <td>{row.jumlah_pesan}</td>
                   <td>{formatCurrency(getSubtotal(row))}</td>
-                  <td>{row.nama_supplier ?? "—"}</td>
+                  <td>{row.nama_supplier ?? "Menunggu keputusan owner"}</td>
                   <td>
                     <span
                       className={`proposal-status proposal-status-${row.proposal.status_penyetujuan ?? "unknown"}`}
@@ -493,7 +467,7 @@ export default function ProposalForm({
                     </small>
                   </td>
                   <td className="proposal-row-action">
-                    {isActiveDraft ? (
+                    {showDraftActions && isActiveDraft ? (
                       <button
                         aria-label={`Hapus ${row.nama_barang} dari draft`}
                         className="proposal-remove-button"
@@ -510,7 +484,7 @@ export default function ProposalForm({
                           width={12}
                         />
                       </button>
-                    ) : canResumeDraft ? (
+                    ) : showDraftActions && canResumeDraft ? (
                       <button
                         className="proposal-resume-button"
                         disabled={isSaving}
@@ -527,33 +501,113 @@ export default function ProposalForm({
                 </tr>
               );
             })}
-            {visibleRows.length === 0 && (
+            {tableRows.length === 0 ? (
               <tr>
                 <td className="proposal-empty-cell" colSpan={10}>
-                  {search
-                    ? "Barang tidak ditemukan."
-                    : "Belum ada barang dalam pengajuan."}
+                  {search ? "Barang tidak ditemukan." : emptyMessage}
                 </td>
               </tr>
-            )}
+            ) : null}
           </tbody>
         </table>
       </div>
+    );
+  }
 
-      <div className="proposal-submit-row">
-        <p>
-          Total draft{" "}
-          <strong>{formatCurrency(activeDraft?.harga_total ?? "0")}</strong>
+  return (
+    <section aria-label="Daftar pengajuan pemesanan" className="proposal-panel">
+      <label className="proposal-search">
+        <Image
+          alt=""
+          aria-hidden="true"
+          height={20}
+          src="/images/approval-search.svg"
+          width={20}
+        />
+        <input
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Cari ID pengajuan atau barang"
+          type="search"
+          value={search}
+        />
+      </label>
+
+      {error ? (
+        <p className="proposal-error" role="alert">
+          {error}
         </p>
-        <button
-          className="proposal-submit-button"
-          disabled={isSaving || !activeDraft || activeDraft.items.length === 0}
-          onClick={() => void submitDraft()}
-          type="button"
-        >
-          {isSaving ? "Menyimpan..." : "Kirim Pengajuan"}
-        </button>
-      </div>
+      ) : null}
+
+      <section aria-labelledby="proposal-history-title" className="procurement-section">
+        <header className="procurement-section-heading">
+          <div>
+            <h2 id="proposal-history-title">Riwayat Pengajuan</h2>
+            <p>Pengajuan yang sudah disetujui atau ditolak owner.</p>
+          </div>
+          <span>{historyRows.length} barang</span>
+        </header>
+        {renderProposalTable(historyRows, "Belum ada riwayat pengajuan.")}
+      </section>
+
+      <section aria-labelledby="proposal-submitted-title" className="procurement-section">
+        <header className="procurement-section-heading">
+          <div>
+            <h2 id="proposal-submitted-title">Pengajuan Sudah Diajukan</h2>
+            <p>Menunggu keputusan owner untuk setiap barang.</p>
+          </div>
+          <span>{submittedRows.length} barang</span>
+        </header>
+        {renderProposalTable(submittedRows, "Belum ada pengajuan yang dikirim.")}
+      </section>
+
+      <section aria-labelledby="proposal-create-title" className="procurement-section">
+        <header className="procurement-section-heading">
+          <div>
+            <h2 id="proposal-create-title">Buat Pengajuan</h2>
+            <p>
+              Susun draft barang, lalu kirim agar setiap barang mendapat ID
+              pengajuan masing-masing.
+            </p>
+          </div>
+          <button
+            className="proposal-add-button"
+            disabled={isSaving || products.length === 0}
+            onClick={() => {
+              setError(null);
+              setDialogOpen(true);
+            }}
+            type="button"
+          >
+            + Tambah Barang
+          </button>
+        </header>
+        {activeDraft ? (
+          <p className="proposal-draft-label">
+            Draft aktif: <strong>{activeDraft.id_pengajuan}</strong>
+          </p>
+        ) : null}
+        {renderProposalTable(
+          draftRows,
+          "Tambahkan barang untuk memulai pengajuan baru.",
+          true,
+        )}
+        <div className="proposal-submit-row">
+          <p>
+            Total draft{" "}
+            <strong>{formatCurrency(activeDraft?.harga_total ?? "0")}</strong>
+          </p>
+          <button
+            className="proposal-submit-button"
+            disabled={
+              isSaving || !activeDraft || activeDraft.items.length === 0
+            }
+            onClick={() => void submitDraft()}
+            type="button"
+          >
+            {isSaving ? "Menyimpan..." : "Kirim Pengajuan"}
+          </button>
+        </div>
+      </section>
 
       {dialogOpen && (
         <div
