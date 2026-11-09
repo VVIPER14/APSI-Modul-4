@@ -948,9 +948,11 @@ input {
 
 .proposal-search {
   display: flex;
-  width: min(280px, 100%);
+  box-sizing: border-box;
+  width: min(320px, 100%);
   height: 42px;
-  flex: 0 1 280px;
+  min-height: 42px;
+  flex: 0 0 42px;
   align-items: center;
   gap: 9px;
   padding: 0 12px;
@@ -1265,7 +1267,7 @@ input {
 }
 
 .approval-search {
-  flex-basis: 280px;
+  flex-basis: 42px;
 }
 
 .procurement-section {
@@ -1445,8 +1447,10 @@ input {
 
 .database-search {
   display: flex;
+  box-sizing: border-box;
   width: min(320px, 100%);
   height: 40px;
+  min-height: 40px;
   align-items: center;
   gap: 9px;
   padding: 0 12px;
@@ -1937,7 +1941,7 @@ input {
 
   .proposal-search {
     width: 100%;
-    flex-basis: 48px;
+    flex-basis: 42px;
   }
 
   .proposal-add-button {
@@ -2101,8 +2105,10 @@ input {
 
 .stock-check-search {
   display: flex;
+  box-sizing: border-box;
   width: min(320px, 100%);
-  height: 48px;
+  height: 42px;
+  min-height: 42px;
   align-items: center;
   gap: 12px;
   padding: 0 16px;
@@ -3472,7 +3478,9 @@ input {
 
 .transaction-search {
   display: flex;
-  min-height: 44px;
+  box-sizing: border-box;
+  height: 42px;
+  min-height: 42px;
   align-items: center;
   gap: 10px;
   padding: 0 14px;
