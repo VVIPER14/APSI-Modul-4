@@ -390,3 +390,96 @@ export async function POST(request: Request) {
 
   return Response.json({ error: "Aksi pengajuan tidak dikenal." }, { status: 400 });
 }
+
+export async function DELETE(request: Request) {
+  const session = await getCurrentSession();
+
+  if (!session) {
+    return Response.json({ error: "Sesi login tidak valid." }, { status: 401 });
+  }
+
+  if (session.role !== "Karyawan Gudang") {
+    return Response.json(
+      { error: "Hanya karyawan gudang yang dapat menghapus riwayat pengajuan." },
+      { status: 403 },
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "Format data tidak valid." }, { status: 400 });
+  }
+
+  if (
+    !isRecord(body) ||
+    !Array.isArray(body.ids) ||
+    body.ids.length === 0 ||
+    body.ids.length > 100 ||
+    body.ids.some(
+      (id) => typeof id !== "string" || !id.trim() || id.length > 255,
+    ) ||
+    new Set(body.ids).size !== body.ids.length
+  ) {
+    return Response.json({ error: "Pilihan riwayat tidak valid." }, { status: 400 });
+  }
+
+  const ids = body.ids as string[];
+  try {
+    const result = await prisma.$transaction(async (transaction) => {
+      await transaction.$executeRaw`LOCK TABLE "pengajuan", "pemesanan" IN EXCLUSIVE MODE`;
+      const proposals = await transaction.pengajuan.findMany({
+        where: { id_pengajuan: { in: ids } },
+        select: {
+          id_pengajuan: true,
+          id_pengaju: true,
+          status_penyetujuan: true,
+          pemesanan: { select: { id_pemesanan: true } },
+        },
+      });
+
+      if (
+        proposals.length !== ids.length ||
+        proposals.some(
+          (proposal) =>
+            proposal.id_pengaju !== session.userId ||
+            (proposal.status_penyetujuan !== proposalStatuses.approved &&
+              proposal.status_penyetujuan !== proposalStatuses.rejected),
+        )
+      ) {
+        return {
+          error: "Riwayat terpilih tidak ditemukan atau tidak dapat dihapus.",
+          status: 409,
+        };
+      }
+
+      const linkedOrders = proposals.flatMap((proposal) =>
+        proposal.pemesanan.map((order) => order.id_pemesanan),
+      );
+      if (linkedOrders.length > 0) {
+        return {
+          error: `Riwayat yang memiliki pemesanan (${linkedOrders.join(", ")}) tidak dapat dihapus.`,
+          status: 409,
+        };
+      }
+
+      const deleted = await transaction.pengajuan.deleteMany({
+        where: { id_pengajuan: { in: ids }, id_pengaju: session.userId },
+      });
+      return { deleted: deleted.count };
+    });
+
+    if ("error" in result) {
+      return Response.json({ error: result.error }, { status: result.status });
+    }
+
+    return Response.json(result);
+  } catch (error) {
+    console.error("Failed to delete warehouse proposal history.", error);
+    return Response.json(
+      { error: "Riwayat pengajuan gagal dihapus. Silakan coba kembali." },
+      { status: 500 },
+    );
+  }
+}

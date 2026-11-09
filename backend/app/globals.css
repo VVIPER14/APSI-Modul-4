@@ -948,19 +948,22 @@ input {
 
 .proposal-search {
   display: flex;
-  width: min(320px, 100%);
-  height: 48px;
-  flex: 0 1 320px;
+  width: min(280px, 100%);
+  height: 42px;
+  flex: 0 1 280px;
   align-items: center;
-  gap: 12px;
-  padding: 0 16px;
+  gap: 9px;
+  padding: 0 12px;
   border: 1px solid rgb(255 255 255 / 16%);
   border-radius: 16px;
   background: rgb(255 255 255 / 7%);
 }
 
 .proposal-search img {
-  flex: 0 0 20px;
+  display: block;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
 }
 
 .proposal-search input {
@@ -1262,7 +1265,7 @@ input {
 }
 
 .approval-search {
-  flex-basis: 320px;
+  flex-basis: 280px;
 }
 
 .procurement-section {
@@ -2769,7 +2772,11 @@ input {
 }
 
 .stock-info-table.is-owner {
-  min-width: 1124px;
+  min-width: 1172px;
+}
+
+.stock-info-table.is-owner .stock-info-col-select {
+  width: 48px;
 }
 
 .stock-info-table.is-owner .stock-info-col-id {
@@ -2842,6 +2849,14 @@ input {
   justify-content: flex-start;
 }
 
+.stock-info-table.is-owner th:nth-child(2) .stock-info-sort-button {
+  justify-content: center;
+}
+
+.stock-info-table.is-owner th:nth-child(3) .stock-info-sort-button {
+  justify-content: flex-start;
+}
+
 .stock-info-sort-button:hover,
 .stock-info-sort-button:focus-visible {
   background: rgb(255 255 255 / 10%);
@@ -2888,6 +2903,14 @@ input {
 
 .stock-info-table td:not(:nth-child(2)) {
   text-align: center;
+}
+
+.stock-info-table.is-owner td:nth-child(2) {
+  text-align: center;
+}
+
+.stock-info-table.is-owner td:nth-child(3) {
+  text-align: left;
 }
 
 .stock-info-table .stock-info-id {
@@ -2948,6 +2971,75 @@ input {
   .stock-info-table-viewport {
     height: min(364px, 52svh);
   }
+}
+
+.print-document-title {
+  display: none;
+}
+
+.print-selection-toolbar,
+.procurement-history-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.print-selection-toolbar {
+  justify-content: flex-end;
+}
+
+.print-selection-toolbar label,
+.history-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: rgb(255 255 255 / 78%);
+  font-size: 13px;
+}
+
+.print-selection-toolbar input[type="checkbox"],
+.print-selection-column input[type="checkbox"],
+.proposal-history-select input[type="checkbox"],
+.history-select-all input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #02c9bd;
+}
+
+.print-selection-toolbar button,
+.history-print-button {
+  min-height: 36px;
+  padding: 7px 11px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 9px;
+  background: rgb(255 255 255 / 8%);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.print-selection-toolbar button:disabled,
+.history-print-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.print-selection-column,
+.proposal-history-select {
+  width: 44px;
+  text-align: center;
+}
+
+.procurement-history-actions {
+  justify-content: flex-end;
+}
+
+.receipt-history-panel .report-panel-heading > span {
+  color: rgb(255 255 255 / 70%);
+  font-size: 13px;
 }
 
 .transaction-order-screen {
@@ -3211,6 +3303,118 @@ input {
 
   .daily-report-toolbar input {
     flex: 1 1 160px;
+  }
+}
+
+@media print {
+  @page printable {
+    size: landscape;
+    margin: 10mm;
+  }
+
+  .printable-document,
+  .printable-document * {
+    visibility: visible !important;
+  }
+
+  .printable-document {
+    position: fixed !important;
+    z-index: 99999;
+    inset: 0;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    color: #111 !important;
+    font: 10pt Arial, sans-serif !important;
+    backdrop-filter: none !important;
+    page: printable;
+  }
+
+  .print-document-title {
+    display: block !important;
+    margin: 0 0 12px !important;
+    color: #111 !important;
+    font-size: 16pt !important;
+    font-weight: 700 !important;
+  }
+
+  .print-selection-toolbar,
+  .printable-document .procurement-history-actions,
+  .print-selection-column,
+  .proposal-history-select,
+  .stock-check-search,
+  .database-row-actions,
+  .database-toolbar,
+  .database-pagination,
+  .database-table-description,
+  .database-dialog-backdrop,
+  .printable-document .proposal-sort-icon,
+  .printable-document .report-sort-icon,
+  .printable-document .database-sort-icon {
+    display: none !important;
+  }
+
+  .printable-document .report-table-viewport,
+  .printable-document .stock-info-table-viewport,
+  .printable-document .database-table-viewport,
+  .printable-document .approval-table-viewport,
+  .printable-document .proposal-table-viewport {
+    width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    border: 0 !important;
+  }
+
+  .printable-document .stock-info-col-select {
+    display: none !important;
+  }
+
+  .report-panel,
+  .approval-panel,
+  .procurement-section,
+  .stock-info-panel,
+  .database-panel {
+    transform: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .printable-document table {
+    width: 100% !important;
+    min-width: 0 !important;
+    border-collapse: collapse !important;
+    color: #111 !important;
+    font-size: 8pt !important;
+  }
+
+  .printable-document th,
+  .printable-document td {
+    position: static !important;
+    padding: 5px !important;
+    border: 1px solid #bbb !important;
+    background: #fff !important;
+    color: #111 !important;
+    text-align: left !important;
+    white-space: normal !important;
+  }
+
+  .printable-document th button {
+    color: #111 !important;
+    font-size: inherit !important;
+  }
+
+  .printable-document .proposal-status,
+  .printable-document .stock-check-status-pill {
+    border: 0 !important;
+    background: transparent !important;
+    color: #111 !important;
   }
 
   .report-summary strong {

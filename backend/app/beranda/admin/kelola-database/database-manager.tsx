@@ -86,6 +86,10 @@ export default function DatabaseManager() {
   const [sortField, setSortField] = useState("");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [search, setSearch] = useState("");
+  const [selectedRows, setSelectedRows] = useState<Map<string, DatabaseRow>>(
+    new Map(),
+  );
+  const [printRows, setPrintRows] = useState<DatabaseRow[] | null>(null);
   const [editingRow, setEditingRow] = useState<DatabaseRow | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -207,6 +211,7 @@ export default function DatabaseManager() {
     setSearch("");
     setSortField("");
     setSortDirection("asc");
+    setSelectedRows(new Map());
     setEditingRow(null);
     setNotice("");
   }
@@ -261,6 +266,24 @@ export default function DatabaseManager() {
     );
   }
 
+  function stableRowKey(row: DatabaseRow) {
+    return JSON.stringify(rowKey(row));
+  }
+
+  function printDatabaseRows(selectedOnly: boolean) {
+    setPrintRows(
+      selectedOnly
+        ? [...selectedRows.values()]
+        : filteredRows,
+    );
+    window.addEventListener(
+      "afterprint",
+      () => setPrintRows(null),
+      { once: true },
+    );
+    window.requestAnimationFrame(() => window.print());
+  }
+
   async function saveRow(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSaving(true);
@@ -290,6 +313,7 @@ export default function DatabaseManager() {
 
       setEditingRow(null);
       setFormData({});
+      setSelectedRows(new Map());
       setNotice(editingRow ? "Data berhasil diperbarui." : "Data berhasil ditambahkan.");
       await loadRows();
     } catch (saveError) {
@@ -326,6 +350,7 @@ export default function DatabaseManager() {
         return;
       }
       setNotice("Data berhasil dihapus.");
+      setSelectedRows(new Map());
       await loadRows();
     } catch (deleteError) {
       setError(
@@ -335,6 +360,8 @@ export default function DatabaseManager() {
       setIsSaving(false);
     }
   }
+
+  const displayedRows = printRows ?? filteredRows;
 
   return (
     <section aria-label="Pengelolaan tabel database" className="database-panel">
@@ -376,6 +403,47 @@ export default function DatabaseManager() {
           + Tambah Data
         </button>
       </div>
+      <div className="print-selection-toolbar database-print-toolbar">
+        <label>
+          <input
+            checked={
+              filteredRows.length > 0 &&
+              filteredRows.every((row) => selectedRows.has(stableRowKey(row)))
+            }
+            disabled={isLoading || filteredRows.length === 0}
+            onChange={(event) =>
+              setSelectedRows((current) => {
+                const next = new Map(current);
+                for (const row of filteredRows) {
+                  const key = stableRowKey(row);
+                  if (event.target.checked) {
+                    next.set(key, row);
+                  } else {
+                    next.delete(key);
+                  }
+                }
+                return next;
+              })
+            }
+            type="checkbox"
+          />
+          Pilih semua di halaman ({filteredRows.length})
+        </label>
+        <button
+          disabled={selectedRows.size === 0 || isLoading}
+          onClick={() => printDatabaseRows(true)}
+          type="button"
+        >
+          Cetak / Simpan PDF terpilih ({selectedRows.size})
+        </button>
+        <button
+          disabled={filteredRows.length === 0 || isLoading}
+          onClick={() => printDatabaseRows(false)}
+          type="button"
+        >
+          Cetak halaman
+        </button>
+      </div>
 
       <p className="database-table-description">
         Tabel <strong>{currentTable.label}</strong> · {total.toLocaleString("id-ID")} data
@@ -392,10 +460,15 @@ export default function DatabaseManager() {
         </p>
       ) : null}
 
-      <div className="database-table-viewport">
-        <table className="database-table">
+      <div className="printable-document">
+        <h2 className="print-document-title">
+          Database {currentTable.label}
+        </h2>
+        <div className="database-table-viewport">
+          <table className="database-table">
           <thead>
             <tr>
+              <th className="print-selection-column">Pilih</th>
               {visibleFields.map((field) => (
                 <th
                   aria-sort={
@@ -431,23 +504,39 @@ export default function DatabaseManager() {
                   </button>
                 </th>
               ))}
-              <th>Aksi</th>
+              <th className="database-row-actions">Aksi</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td className="proposal-empty-cell" colSpan={visibleFields.length + 1}>
+                <td className="proposal-empty-cell" colSpan={visibleFields.length + 2}>
                   Memuat data...
                 </td>
               </tr>
-            ) : filteredRows.length ? (
-              filteredRows.map((row) => (
-                <tr
-                  key={primaryFields
-                    .map((field) => rowValue(row[field.name]))
-                    .join(":")}
-                >
+            ) : displayedRows.length ? (
+              displayedRows.map((row) => (
+                <tr key={stableRowKey(row)}>
+                  <td className="print-selection-column">
+                    <input
+                      aria-label={`Pilih baris database ${stableRowKey(row)}`}
+                      checked={selectedRows.has(stableRowKey(row))}
+                      disabled={isSaving}
+                      onChange={(event) =>
+                        setSelectedRows((current) => {
+                          const next = new Map(current);
+                          const key = stableRowKey(row);
+                          if (event.target.checked) {
+                            next.set(key, row);
+                          } else {
+                            next.delete(key);
+                          }
+                          return next;
+                        })
+                      }
+                      type="checkbox"
+                    />
+                  </td>
                   {visibleFields.map((field) => (
                     <td key={field.name}>{rowValue(row[field.name])}</td>
                   ))}
@@ -472,13 +561,14 @@ export default function DatabaseManager() {
               ))
             ) : (
               <tr>
-                <td className="proposal-empty-cell" colSpan={visibleFields.length + 1}>
+                <td className="proposal-empty-cell" colSpan={visibleFields.length + 2}>
                   {search ? "Data tidak ditemukan pada halaman ini." : "Tabel ini belum memiliki data."}
                 </td>
               </tr>
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
 
       <footer className="database-pagination">

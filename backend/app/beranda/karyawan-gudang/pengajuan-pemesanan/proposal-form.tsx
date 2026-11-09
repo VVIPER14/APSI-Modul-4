@@ -118,6 +118,10 @@ export default function ProposalForm({
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("nama_barang");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [selectedHistoryIds, setSelectedHistoryIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [isDeletingHistory, setIsDeletingHistory] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState("");
   const [priceInput, setPriceInput] = useState("");
@@ -393,16 +397,61 @@ export default function ProposalForm({
     }
   }
 
+  async function deleteHistory() {
+    const ids = [...selectedHistoryIds];
+    if (
+      ids.length === 0 ||
+      !window.confirm(`Hapus ${ids.length} riwayat pengajuan yang dipilih?`)
+    ) {
+      return;
+    }
+
+    setError(null);
+    setIsDeletingHistory(true);
+    try {
+      const response = await fetch(
+        "/api/beranda/karyawan-gudang/pengajuan-pemesanan/",
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids }),
+        },
+      );
+      const result = (await response.json()) as { error?: string; deleted?: number };
+      if (!response.ok || typeof result.deleted !== "number") {
+        setError(result.error ?? "Riwayat pengajuan gagal dihapus.");
+        return;
+      }
+
+      setProposals((current) =>
+        current.filter((proposal) => !selectedHistoryIds.has(proposal.id_pengajuan)),
+      );
+      setSelectedHistoryIds(new Set());
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Riwayat pengajuan gagal dihapus.",
+      );
+    } finally {
+      setIsDeletingHistory(false);
+    }
+  }
+
   function renderProposalTable(
     tableRows: (ProposalItem & { proposal: ProposalRecord })[],
     emptyMessage: string,
     showDraftActions = false,
+    historyActions = false,
   ) {
     return (
       <div className="proposal-table-viewport">
         <table className="proposal-table">
           <thead>
             <tr>
+              {historyActions ? (
+                <th aria-label="Pilih riwayat" className="proposal-history-select" />
+              ) : null}
               {tableHeaders.map((header) => (
                 <th
                   aria-sort={
@@ -448,6 +497,27 @@ export default function ProposalForm({
 
               return (
                 <tr key={`${row.proposal.id_pengajuan}-${row.id_barang}`}>
+                  {historyActions ? (
+                    <td className="proposal-history-select">
+                      <input
+                        aria-label={`Pilih pengajuan ${row.proposal.id_pengajuan}`}
+                        checked={selectedHistoryIds.has(row.proposal.id_pengajuan)}
+                        disabled={isDeletingHistory}
+                        onChange={(event) =>
+                          setSelectedHistoryIds((current) => {
+                            const next = new Set(current);
+                            if (event.target.checked) {
+                              next.add(row.proposal.id_pengajuan);
+                            } else {
+                              next.delete(row.proposal.id_pengajuan);
+                            }
+                            return next;
+                          })
+                        }
+                        type="checkbox"
+                      />
+                    </td>
+                  ) : null}
                   <td>{row.id_barang}</td>
                   <td>{row.nama_barang}</td>
                   <td>{row.kategori}</td>
@@ -503,7 +573,7 @@ export default function ProposalForm({
             })}
             {tableRows.length === 0 ? (
               <tr>
-                <td className="proposal-empty-cell" colSpan={10}>
+                <td className="proposal-empty-cell" colSpan={10 + (historyActions ? 1 : 0)}>
                   {search ? "Barang tidak ditemukan." : emptyMessage}
                 </td>
               </tr>
@@ -544,9 +614,52 @@ export default function ProposalForm({
             <h2 id="proposal-history-title">Riwayat Pengajuan</h2>
             <p>Pengajuan yang sudah disetujui atau ditolak owner.</p>
           </div>
-          <span>{historyRows.length} barang</span>
+          <div className="procurement-history-actions">
+            <span>{historyRows.length} barang</span>
+            <label className="history-select-all">
+              <input
+                checked={
+                  historyRows.length > 0 &&
+                  historyRows.every((row) =>
+                    selectedHistoryIds.has(row.proposal.id_pengajuan),
+                  )
+                }
+                disabled={isDeletingHistory}
+                onChange={(event) =>
+                  setSelectedHistoryIds((current) => {
+                    const next = new Set(current);
+                    for (const row of historyRows) {
+                      if (event.target.checked) {
+                        next.add(row.proposal.id_pengajuan);
+                      } else {
+                        next.delete(row.proposal.id_pengajuan);
+                      }
+                    }
+                    return next;
+                  })
+                }
+                type="checkbox"
+              />
+              Pilih semua
+            </label>
+            <button
+              className="database-delete-button"
+              disabled={isDeletingHistory || selectedHistoryIds.size === 0}
+              onClick={() => void deleteHistory()}
+              type="button"
+            >
+              {isDeletingHistory
+                ? "Menghapus..."
+                : `Hapus riwayat (${selectedHistoryIds.size})`}
+            </button>
+          </div>
         </header>
-        {renderProposalTable(historyRows, "Belum ada riwayat pengajuan.")}
+        {renderProposalTable(
+          historyRows,
+          "Belum ada riwayat pengajuan.",
+          false,
+          true,
+        )}
       </section>
 
       <section aria-labelledby="proposal-submitted-title" className="procurement-section">

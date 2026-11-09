@@ -84,9 +84,11 @@ function formatPrice(price: string) {
 export default function StockInformationTable({
   items,
   role,
+  reportDate,
 }: {
   items: StockInformationItem[];
   role: "Owner" | "Karyawan Kasir";
+  reportDate?: string;
 }) {
   const isOwner = role === "Owner";
   const columns = isOwner ? ownerColumns : cashierColumns;
@@ -94,6 +96,10 @@ export default function StockInformationTable({
   const [sortKey, setSortKey] = useState<SortKey>("id_barang");
   const [sortDirection, setSortDirection] =
     useState<SortDirection>("ascending");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [printItems, setPrintItems] = useState<StockInformationItem[] | null>(
+    null,
+  );
 
   const visibleItems = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("id");
@@ -123,11 +129,31 @@ export default function StockInformationTable({
     setSortDirection("ascending");
   }
 
+  function printRows(rows: StockInformationItem[]) {
+    setPrintItems(rows);
+    window.addEventListener(
+      "afterprint",
+      () => setPrintItems(null),
+      { once: true },
+    );
+    window.requestAnimationFrame(() => window.print());
+  }
+
+  const tableItems = printItems ?? visibleItems;
+  const selectedVisibleCount = visibleItems.filter((item) =>
+    selectedIds.has(item.id_barang),
+  ).length;
+
   return (
     <section
       aria-label={isOwner ? "Tabel laporan stok" : "Tabel informasi stok"}
-      className="stock-info-panel"
+      className={`stock-info-panel${isOwner ? " printable-document" : ""}`}
     >
+      {isOwner ? (
+        <h2 className="print-document-title">
+          Laporan Stok{reportDate ? ` - ${reportDate}` : ""}
+        </h2>
+      ) : null}
       <div className="stock-info-toolbar">
         <label className="stock-check-search">
           <Image
@@ -145,6 +171,47 @@ export default function StockInformationTable({
             value={search}
           />
         </label>
+        {isOwner ? (
+          <div className="print-selection-toolbar">
+            <label>
+              <input
+                checked={
+                  visibleItems.length > 0 &&
+                  visibleItems.every((item) => selectedIds.has(item.id_barang))
+                }
+                onChange={(event) =>
+                  setSelectedIds((current) => {
+                    const next = new Set(current);
+                    for (const item of visibleItems) {
+                      if (event.target.checked) {
+                        next.add(item.id_barang);
+                      } else {
+                        next.delete(item.id_barang);
+                      }
+                    }
+                    return next;
+                  })
+                }
+                type="checkbox"
+              />
+              Pilih semua ({visibleItems.length})
+            </label>
+            <button
+              disabled={selectedVisibleCount === 0}
+              onClick={() =>
+                printRows(
+                  visibleItems.filter((item) => selectedIds.has(item.id_barang)),
+                )
+              }
+              type="button"
+            >
+              Cetak / Simpan PDF ({selectedVisibleCount})
+            </button>
+            <button onClick={() => printRows(visibleItems)} type="button">
+              Cetak semua
+            </button>
+          </div>
+        ) : null}
       </div>
 
       <div className="stock-info-table-viewport">
@@ -155,6 +222,7 @@ export default function StockInformationTable({
               : "Informasi stok, minimum, harga, dan status setiap barang"}
           </caption>
           <colgroup>
+            {isOwner ? <col className="stock-info-col-select" /> : null}
             <col className="stock-info-col-id" />
             <col className="stock-info-col-name" />
             <col className="stock-info-col-category" />
@@ -177,6 +245,9 @@ export default function StockInformationTable({
           </colgroup>
           <thead>
             <tr>
+              {isOwner ? (
+                <th className="print-selection-column" scope="col">Pilih</th>
+              ) : null}
               {columns.map(({ key, label }) => (
                 <th
                   aria-sort={
@@ -219,12 +290,32 @@ export default function StockInformationTable({
             </tr>
           </thead>
           <tbody>
-            {visibleItems.length > 0 ? (
-              visibleItems.map((item) => {
+            {tableItems.length > 0 ? (
+              tableItems.map((item) => {
                 const status = getStatus(item);
 
                 return (
                   <tr key={item.id_barang}>
+                    {isOwner ? (
+                      <td className="print-selection-column">
+                        <input
+                          aria-label={`Pilih ${item.nama_barang}`}
+                          checked={selectedIds.has(item.id_barang)}
+                          onChange={(event) =>
+                            setSelectedIds((current) => {
+                              const next = new Set(current);
+                              if (event.target.checked) {
+                                next.add(item.id_barang);
+                              } else {
+                                next.delete(item.id_barang);
+                              }
+                              return next;
+                            })
+                          }
+                          type="checkbox"
+                        />
+                      </td>
+                    ) : null}
                     <td className="stock-info-id">{item.id_barang}</td>
                     <td className="stock-info-name">{item.nama_barang}</td>
                     <td>{item.kategori}</td>
@@ -265,7 +356,10 @@ export default function StockInformationTable({
               })
             ) : (
               <tr>
-                <td className="stock-info-empty" colSpan={columns.length}>
+                <td
+                  className="stock-info-empty"
+                  colSpan={columns.length + (isOwner ? 1 : 0)}
+                >
                   {items.length > 0
                     ? "Barang tidak ditemukan."
                     : "Belum ada data barang."}

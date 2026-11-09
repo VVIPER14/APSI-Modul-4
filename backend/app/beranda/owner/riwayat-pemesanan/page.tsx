@@ -190,6 +190,7 @@ export default async function OrderHistoryPage() {
             emptyMessage="Belum ada riwayat pemesanan."
             initialDirection="desc"
             initialSortKey="tanggal_pemesanan"
+            printTitle="Riwayat Pemesanan"
             rows={rows}
           />
         </div>

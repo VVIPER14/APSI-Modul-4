@@ -176,6 +176,7 @@ export default function FinancialReportChart({
             emptyMessage="Belum ada riwayat pemasukan."
             initialDirection="desc"
             initialSortKey="tanggal_laporan"
+            printTitle="Riwayat Pemasukan Harian"
             rows={historyRows}
           />
         </div>

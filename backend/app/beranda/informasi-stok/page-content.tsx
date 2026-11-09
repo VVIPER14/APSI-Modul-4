@@ -155,7 +155,11 @@ export default async function StockInformationContent({
         </form>
       ) : null}
 
-      <StockInformationTable items={items} role={role} />
+      <StockInformationTable
+        items={items}
+        reportDate={role === "Owner" ? selectedDate : undefined}
+        role={role}
+      />
     </main>
   );
 }

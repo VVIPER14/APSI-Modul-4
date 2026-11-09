@@ -73,6 +73,7 @@ export default function SortableRecordTable({
   caption,
   initialSortKey,
   initialDirection = "asc",
+  printTitle,
 }: {
   columns: SortableRecordColumn[];
   rows: SortableRecord[];
@@ -81,9 +82,12 @@ export default function SortableRecordTable({
   caption?: string;
   initialSortKey?: string;
   initialDirection?: "asc" | "desc";
+  printTitle?: string;
 }) {
   const [sortKey, setSortKey] = useState(initialSortKey ?? columns[0]?.key ?? "");
   const [direction, setDirection] = useState<"asc" | "desc">(initialDirection);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [printRows, setPrintRows] = useState<SortableRecord[] | null>(null);
   const sortedRows = useMemo(() => {
     const sign = direction === "asc" ? 1 : -1;
     return [...rows].sort(
@@ -91,6 +95,10 @@ export default function SortableRecordTable({
         sign * compare(first[sortKey] ?? null, second[sortKey] ?? null),
     );
   }, [direction, rows, sortKey]);
+  const selectable = Boolean(printTitle);
+  const rowKey = (row: SortableRecord) =>
+    columns.map((column) => String(row[column.key] ?? "")).join("\u0000");
+  const visibleRows = printRows ?? sortedRows;
 
   function toggleSort(key: string) {
     if (sortKey === key) {
@@ -102,64 +110,145 @@ export default function SortableRecordTable({
     setDirection("asc");
   }
 
+  function printRecords(records: SortableRecord[]) {
+    setPrintRows(records);
+    window.addEventListener(
+      "afterprint",
+      () => setPrintRows(null),
+      { once: true },
+    );
+    window.requestAnimationFrame(() => window.print());
+  }
+
+  function toggleAllRows(checked: boolean) {
+    setSelectedKeys((current) => {
+      const next = new Set(current);
+      for (const row of sortedRows) {
+        const key = rowKey(row);
+        if (checked) {
+          next.add(key);
+        } else {
+          next.delete(key);
+        }
+      }
+      return next;
+    });
+  }
+
   return (
-    <table className={className}>
-      {caption ? <caption className="sr-only">{caption}</caption> : null}
-      <thead>
-        <tr>
-          {columns.map((column) => (
-            <th
-              aria-sort={
-                sortKey === column.key
-                  ? direction === "asc"
-                    ? "ascending"
-                    : "descending"
-                  : "none"
+    <div className={selectable ? "printable-document" : undefined}>
+      {selectable ? (
+        <>
+          <h2 className="print-document-title">{printTitle}</h2>
+          <div className="print-selection-toolbar">
+            <label>
+              <input
+                checked={sortedRows.length > 0 && sortedRows.every((row) => selectedKeys.has(rowKey(row)))}
+                onChange={(event) => toggleAllRows(event.target.checked)}
+                type="checkbox"
+              />
+              Pilih semua ({sortedRows.length})
+            </label>
+            <button
+              disabled={selectedKeys.size === 0}
+              onClick={() =>
+                printRecords(
+                  sortedRows.filter((row) => selectedKeys.has(rowKey(row))),
+                )
               }
-              key={column.key}
-              scope="col"
+              type="button"
             >
-              <button
-                className="report-sort-button"
-                onClick={() => toggleSort(column.key)}
-                type="button"
-              >
-                {column.label}
-                <span
-                  aria-hidden="true"
-                  className={`report-sort-icon${sortKey === column.key && direction === "desc" ? " is-descending" : ""}`}
-                >
-                  <Image
-                    alt=""
-                    height={8}
-                    src="/images/approval-sort.svg"
-                    width={8}
-                  />
-                </span>
-              </button>
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {sortedRows.length ? (
-          sortedRows.map((row, index) => (
-            <tr key={`${index}-${columns.map((column) => row[column.key] ?? "").join("-")}`}>
-              {columns.map((column) => (
-                <td key={column.key}>
-                  {formatValue(row[column.key] ?? null, column.format)}
-                </td>
-              ))}
-            </tr>
-          ))
-        ) : (
+              Cetak / Simpan PDF ({selectedKeys.size})
+            </button>
+            <button onClick={() => printRecords(sortedRows)} type="button">
+              Cetak semua
+            </button>
+          </div>
+        </>
+      ) : null}
+      <table className={className}>
+        {caption ? <caption className="sr-only">{caption}</caption> : null}
+        <thead>
           <tr>
-            <td className="report-empty" colSpan={columns.length}>
-              {emptyMessage}
-            </td>
+            {selectable ? (
+              <th className="print-selection-column" scope="col">
+                Pilih
+              </th>
+            ) : null}
+            {columns.map((column) => (
+              <th
+                aria-sort={
+                  sortKey === column.key
+                    ? direction === "asc"
+                      ? "ascending"
+                      : "descending"
+                    : "none"
+                }
+                key={column.key}
+                scope="col"
+              >
+                <button
+                  className="report-sort-button"
+                  onClick={() => toggleSort(column.key)}
+                  type="button"
+                >
+                  {column.label}
+                  <span
+                    aria-hidden="true"
+                    className={`report-sort-icon${sortKey === column.key && direction === "desc" ? " is-descending" : ""}`}
+                  >
+                    <Image
+                      alt=""
+                      height={8}
+                      src="/images/approval-sort.svg"
+                      width={8}
+                    />
+                  </span>
+                </button>
+              </th>
+            ))}
           </tr>
-        )}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {visibleRows.length ? (
+            visibleRows.map((row, index) => (
+              <tr key={`${index}-${rowKey(row)}`}>
+                {selectable ? (
+                  <td className="print-selection-column">
+                    <input
+                      aria-label={`Pilih baris ${index + 1}`}
+                      checked={selectedKeys.has(rowKey(row))}
+                      onChange={(event) =>
+                        setSelectedKeys((current) => {
+                          const next = new Set(current);
+                          if (event.target.checked) {
+                            next.add(rowKey(row));
+                          } else {
+                            next.delete(rowKey(row));
+                          }
+                          return next;
+                        })
+                      }
+                      type="checkbox"
+                    />
+                  </td>
+                ) : null}
+                {columns.map((column) => (
+                  <td key={column.key}>
+                    {formatValue(row[column.key] ?? null, column.format)}
+                  </td>
+                ))}
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td className="report-empty" colSpan={columns.length + (selectable ? 1 : 0)}>
+                {emptyMessage}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
   );
 }

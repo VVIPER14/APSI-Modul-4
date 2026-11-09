@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { dashboardPathForRole, getCurrentSession } from "@/app/lib/auth";
 import { prisma } from "@/app/lib/prisma";
+import type { SortableRecord } from "@/app/lib/sortable-record-table";
 import ReceiptForm, { type ReceiptOrder } from "./receipt-form";
 
 export const instant = false;
@@ -25,32 +26,49 @@ export default async function ReceiptPage() {
     redirect(dashboardPathForRole(session.role) ?? "/");
   }
 
-  const orders = await prisma.pemesanan.findMany({
-    where: {
-      status_pemesanan: {
-        in: ["Menunggu Penerimaan", "Sebagian Diterima"],
-      },
-    },
-    orderBy: [{ tanggal_pemesanan: "asc" }, { id_pemesanan: "asc" }],
-    include: {
-      supplier: { select: { nama_supplier: true } },
-      detail_pemesanan: {
-        include: {
-          barang: {
-            select: { nama_barang: true, satuan: true },
-          },
-        },
-        orderBy: { id_barang: "asc" },
-      },
-      penerimaan: {
-        include: {
-          detail_penerimaan: {
-            select: { id_barang: true, jumlah_diterima: true },
-          },
+  const [orders, receipts] = await Promise.all([
+    prisma.pemesanan.findMany({
+      where: {
+        status_pemesanan: {
+          in: ["Menunggu Penerimaan", "Sebagian Diterima"],
         },
       },
-    },
-  });
+      orderBy: [{ tanggal_pemesanan: "asc" }, { id_pemesanan: "asc" }],
+      include: {
+        supplier: { select: { nama_supplier: true } },
+        detail_pemesanan: {
+          include: {
+            barang: {
+              select: { nama_barang: true, satuan: true },
+            },
+          },
+          orderBy: { id_barang: "asc" },
+        },
+        penerimaan: {
+          include: {
+            detail_penerimaan: {
+              select: { id_barang: true, jumlah_diterima: true },
+            },
+          },
+        },
+      },
+    }),
+    prisma.penerimaan.findMany({
+      orderBy: [{ tanggal_penerimaan: "desc" }, { id_penerimaan: "desc" }],
+      include: {
+        pemesanan: {
+          include: { supplier: { select: { nama_supplier: true } } },
+        },
+        pengguna: { select: { nama_pengguna: true } },
+        detail_penerimaan: {
+          include: {
+            barang: { select: { nama_barang: true, satuan: true } },
+          },
+          orderBy: { id_barang: "asc" },
+        },
+      },
+    }),
+  ]);
 
   const initialOrders: ReceiptOrder[] = orders.map((order) => {
     const receivedByItem = new Map<string, number>();
@@ -80,6 +98,23 @@ export default async function ReceiptPage() {
         };
       }),
     };
+  });
+  const initialHistory: SortableRecord[] = receipts.flatMap((receipt) => {
+    const receiptItems = receipt.detail_penerimaan.length
+      ? receipt.detail_penerimaan
+      : [null];
+    return receiptItems.map((item) => ({
+      id_penerimaan: receipt.id_penerimaan,
+      tanggal_penerimaan: receipt.tanggal_penerimaan.toISOString(),
+      id_pemesanan: receipt.id_pemesanan ?? "—",
+      nama_supplier: receipt.pemesanan?.supplier?.nama_supplier ?? "—",
+      nama_penerima: receipt.pengguna?.nama_pengguna ?? "—",
+      no_faktur: receipt.no_faktur ?? "—",
+      id_barang: item?.id_barang ?? "—",
+      nama_barang: item?.barang.nama_barang ?? "—",
+      satuan: item?.barang.satuan ?? "—",
+      jumlah_diterima: item?.jumlah_diterima ?? null,
+    }));
   });
 
   return (
@@ -122,7 +157,11 @@ export default async function ReceiptPage() {
         </div>
       </section>
 
-      <ReceiptForm initialOrders={initialOrders} />
+      <ReceiptForm
+        initialHistory={initialHistory}
+        initialOrders={initialOrders}
+        receiverName={session.name}
+      />
     </main>
   );
 }

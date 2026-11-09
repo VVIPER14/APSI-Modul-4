@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import SortableRecordTable, {
+  type SortableRecord,
+} from "@/app/lib/sortable-record-table";
 
 export type ReceiptOrder = {
   id_pemesanan: string;
@@ -24,10 +27,15 @@ function formatDate(value: string) {
 
 export default function ReceiptForm({
   initialOrders,
+  initialHistory,
+  receiverName,
 }: {
   initialOrders: ReceiptOrder[];
+  initialHistory: SortableRecord[];
+  receiverName: string;
 }) {
   const [orders, setOrders] = useState(initialOrders);
+  const [history, setHistory] = useState(initialHistory);
   const [invoiceByOrder, setInvoiceByOrder] = useState<Record<string, string>>(
     {},
   );
@@ -117,6 +125,26 @@ export default function ReceiptForm({
         }
         return next;
       });
+      setHistory((current) => [
+        ...result.items!.map((item) => {
+          const orderItem = order.items.find(
+            (candidate) => candidate.id_barang === item.id_barang,
+          );
+          return {
+            id_penerimaan: result.id_penerimaan!,
+            tanggal_penerimaan: new Date().toISOString(),
+            id_pemesanan: order.id_pemesanan,
+            nama_supplier: order.nama_supplier,
+            nama_penerima: receiverName,
+            no_faktur: invoiceByOrder[order.id_pemesanan]?.trim() || "—",
+            id_barang: item.id_barang,
+            nama_barang: orderItem?.nama_barang ?? "—",
+            satuan: orderItem?.satuan ?? "—",
+            jumlah_diterima: item.jumlah_diterima,
+          };
+        }),
+        ...current,
+      ]);
       setNotice(
         `Penerimaan ${result.id_penerimaan} berhasil dicatat untuk pemesanan ${order.id_pemesanan}.`,
       );
@@ -315,6 +343,44 @@ export default function ReceiptForm({
           Belum ada pemesanan disetujui yang menunggu penerimaan.
         </p>
       )}
+
+      <section
+        aria-label="Riwayat penerimaan barang"
+        className="report-panel receipt-history-panel"
+      >
+        <header className="report-panel-heading">
+          <div>
+            <h2>Riwayat Penerimaan</h2>
+            <p>Daftar penerimaan barang yang sudah dicatat.</p>
+          </div>
+          <span>{history.length} baris</span>
+        </header>
+        <div className="report-table-viewport">
+          <SortableRecordTable
+            caption="Riwayat penerimaan barang"
+            columns={[
+              { key: "id_penerimaan", label: "ID Penerimaan" },
+              {
+                key: "tanggal_penerimaan",
+                label: "Tanggal Penerimaan",
+                format: "date",
+              },
+              { key: "id_pemesanan", label: "ID Pemesanan" },
+              { key: "nama_supplier", label: "Supplier" },
+              { key: "nama_penerima", label: "Penerima" },
+              { key: "no_faktur", label: "Nomor Faktur" },
+              { key: "id_barang", label: "ID Barang" },
+              { key: "nama_barang", label: "Nama Barang" },
+              { key: "satuan", label: "Satuan" },
+              { key: "jumlah_diterima", label: "Jumlah Diterima" },
+            ]}
+            emptyMessage="Belum ada riwayat penerimaan barang."
+            initialDirection="desc"
+            initialSortKey="tanggal_penerimaan"
+            rows={history}
+          />
+        </div>
+      </section>
     </section>
   );
 }

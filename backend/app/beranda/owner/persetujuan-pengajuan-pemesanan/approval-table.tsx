@@ -142,6 +142,13 @@ export default function ApprovalTable({
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("id_pengajuan");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [selectedHistoryIds, setSelectedHistoryIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [printHistoryIds, setPrintHistoryIds] = useState<Set<string> | null>(
+    null,
+  );
+  const [isDeletingHistory, setIsDeletingHistory] = useState(false);
   const [busyProposalId, setBusyProposalId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -283,6 +290,62 @@ export default function ApprovalTable({
     }
   }
 
+  function printHistory(ids: Set<string>) {
+    setPrintHistoryIds(ids);
+    window.addEventListener(
+      "afterprint",
+      () => setPrintHistoryIds(null),
+      { once: true },
+    );
+    window.requestAnimationFrame(() => window.print());
+  }
+
+  async function deleteHistory() {
+    const ids = [...selectedHistoryIds];
+    if (
+      ids.length === 0 ||
+      !window.confirm(`Hapus ${ids.length} riwayat pengajuan yang dipilih?`)
+    ) {
+      return;
+    }
+
+    setError(null);
+    setIsDeletingHistory(true);
+    try {
+      const response = await fetch(
+        "/api/beranda/owner/persetujuan-pengajuan-pemesanan/",
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids }),
+        },
+      );
+      const result = (await response.json()) as {
+        error?: string;
+        deleted?: number;
+      };
+      if (!response.ok || typeof result.deleted !== "number") {
+        setError(result.error ?? "Riwayat pengajuan gagal dihapus.");
+        return;
+      }
+
+      setProposals((current) =>
+        current.filter(
+          (proposal) => !selectedHistoryIds.has(proposal.id_pengajuan),
+        ),
+      );
+      setSelectedHistoryIds(new Set());
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Riwayat pengajuan gagal dihapus.",
+      );
+    } finally {
+      setIsDeletingHistory(false);
+    }
+  }
+
   const pendingProposals = visibleProposals.filter(
     (proposal) =>
       proposal.status_penyetujuan === proposalStatuses.processing,
@@ -297,12 +360,16 @@ export default function ApprovalTable({
     tableProposals: ApprovalProposal[],
     allowDecision: boolean,
     emptyMessage: string,
+    historyActions = false,
   ) {
     return (
       <div className="approval-table-viewport">
         <table className="approval-table">
           <thead>
             <tr>
+              {historyActions ? (
+                <th aria-label="Pilih riwayat" className="proposal-history-select" />
+              ) : null}
               {tableHeaders.map((header) => (
                 <th
                   aria-sort={
@@ -346,6 +413,27 @@ export default function ApprovalTable({
                 <tr
                   key={`${proposal.id_pengajuan}-${item?.id_barang ?? `empty-${index}`}`}
                 >
+                  {historyActions ? (
+                    <td className="proposal-history-select">
+                      <input
+                        aria-label={`Pilih pengajuan ${proposal.id_pengajuan}`}
+                        checked={selectedHistoryIds.has(proposal.id_pengajuan)}
+                        disabled={isDeletingHistory}
+                        onChange={(event) =>
+                          setSelectedHistoryIds((current) => {
+                            const next = new Set(current);
+                            if (event.target.checked) {
+                              next.add(proposal.id_pengajuan);
+                            } else {
+                              next.delete(proposal.id_pengajuan);
+                            }
+                            return next;
+                          })
+                        }
+                        type="checkbox"
+                      />
+                    </td>
+                  ) : null}
                   <td>{proposal.id_pengajuan}</td>
                   <td>{formatDate(proposal.tanggal_pengajuan)}</td>
                   <td>{proposal.nama_pengaju}</td>
@@ -424,7 +512,7 @@ export default function ApprovalTable({
             })}
             {tableProposals.length === 0 ? (
               <tr>
-                <td className="proposal-empty-cell" colSpan={13}>
+                <td className="proposal-empty-cell" colSpan={13 + (historyActions ? 1 : 0)}>
                   {search ? "Pengajuan tidak ditemukan." : emptyMessage}
                 </td>
               </tr>
@@ -474,18 +562,81 @@ export default function ApprovalTable({
         )}
       </section>
 
-      <section aria-labelledby="owner-proposal-history" className="procurement-section">
+      <section
+        aria-labelledby="owner-proposal-history"
+        className="procurement-section printable-document"
+      >
+        <h2 className="print-document-title">Riwayat Pengajuan Pemesanan</h2>
         <header className="procurement-section-heading">
           <div>
             <h2 id="owner-proposal-history">Riwayat Persetujuan</h2>
             <p>Pengajuan yang sudah disetujui atau ditolak.</p>
           </div>
-          <span>{historyProposals.length} pengajuan</span>
+          <div className="procurement-history-actions">
+            <span>{historyProposals.length} pengajuan</span>
+            <label className="history-select-all">
+              <input
+                checked={
+                  historyProposals.length > 0 &&
+                  historyProposals.every((proposal) =>
+                    selectedHistoryIds.has(proposal.id_pengajuan),
+                  )
+                }
+                onChange={(event) =>
+                  setSelectedHistoryIds((current) => {
+                    const next = new Set(current);
+                    for (const proposal of historyProposals) {
+                      if (event.target.checked) {
+                        next.add(proposal.id_pengajuan);
+                      } else {
+                        next.delete(proposal.id_pengajuan);
+                      }
+                    }
+                    return next;
+                  })
+                }
+                type="checkbox"
+              />
+              Pilih semua
+            </label>
+            <button
+              className="history-print-button"
+              disabled={selectedHistoryIds.size === 0}
+              onClick={() => printHistory(selectedHistoryIds)}
+              type="button"
+            >
+              Cetak terpilih ({selectedHistoryIds.size})
+            </button>
+            <button
+              className="history-print-button"
+              onClick={() =>
+                printHistory(new Set(historyProposals.map((proposal) => proposal.id_pengajuan)))
+              }
+              type="button"
+            >
+              Cetak semua
+            </button>
+            <button
+              className="database-delete-button"
+              disabled={isDeletingHistory || selectedHistoryIds.size === 0}
+              onClick={() => void deleteHistory()}
+              type="button"
+            >
+              {isDeletingHistory
+                ? "Menghapus..."
+                : `Hapus riwayat (${selectedHistoryIds.size})`}
+            </button>
+          </div>
         </header>
         {renderTable(
-          historyProposals,
+          printHistoryIds
+            ? historyProposals.filter((proposal) =>
+                printHistoryIds.has(proposal.id_pengajuan),
+              )
+            : historyProposals,
           false,
           "Belum ada riwayat keputusan pengajuan.",
+          true,
         )}
       </section>
     </section>
