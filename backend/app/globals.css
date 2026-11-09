@@ -1552,6 +1552,12 @@ input {
   pointer-events: none;
 }
 
+.stock-check-screen.owner-stock-report::before {
+  background:
+    linear-gradient(rgb(11 18 32 / 70%), rgb(11 18 32 / 70%)),
+    url("/images/owner-home-background.png") center / cover no-repeat;
+}
+
 .stock-check-loading {
   width: min(1296px, calc(100% - 64px));
   margin: 32px auto;
@@ -1654,17 +1660,16 @@ input {
 }
 
 .stock-check-table {
-  min-width: 1120px;
+  min-width: 1408px;
   font-family: var(--font-poppins), Arial, sans-serif;
 }
 
 .stock-check-table-header,
 .stock-check-table-row {
   display: grid;
-  grid-template-columns:
-    78px minmax(180px, 1.15fr) 90px 122px 145px minmax(240px, 1.5fr) 86px;
+  grid-template-columns: 88px 220px 130px 80px 112px 100px 100px 160px 300px 90px;
   align-items: center;
-  column-gap: 10px;
+  column-gap: 0;
   padding: 0 14px;
 }
 
@@ -2193,6 +2198,43 @@ input {
   width: 172px;
 }
 
+.stock-info-table.is-owner {
+  min-width: 1124px;
+}
+
+.stock-info-table.is-owner .stock-info-col-id {
+  width: 110px;
+}
+
+.stock-info-table.is-owner .stock-info-col-name {
+  width: 248px;
+}
+
+.stock-info-table.is-owner .stock-info-col-category {
+  width: 110px;
+}
+
+.stock-info-table.is-owner .stock-info-col-unit {
+  width: 100px;
+}
+
+.stock-info-table.is-owner .stock-info-col-minimum {
+  width: 112px;
+}
+
+.stock-info-table.is-owner .stock-info-col-incoming,
+.stock-info-table.is-owner .stock-info-col-outgoing {
+  width: 108px;
+}
+
+.stock-info-table.is-owner .stock-info-col-stock {
+  width: 116px;
+}
+
+.stock-info-table.is-owner .stock-info-col-status {
+  width: 112px;
+}
+
 .stock-info-table th {
   position: sticky;
   z-index: 1;
@@ -2294,6 +2336,11 @@ input {
 }
 
 .stock-info-table .stock-info-stock {
+  color: #fff;
+  font-weight: 600;
+}
+
+.stock-info-table .stock-info-movement {
   color: #fff;
   font-weight: 600;
 }

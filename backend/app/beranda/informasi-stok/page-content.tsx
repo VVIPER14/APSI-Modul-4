@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { dashboardPathForRole, getCurrentSession } from "@/app/lib/auth";
-import { getAvailableStock } from "@/app/lib/inventory";
+import { getInventorySummary } from "@/app/lib/inventory";
 import { prisma } from "@/app/lib/prisma";
 import StockInformationTable, {
   type StockInformationItem,
@@ -13,7 +13,7 @@ const descriptions: Record<"Owner" | "Karyawan Kasir", string> = {
   "Karyawan Kasir":
     "Lihat ketersediaan stok barang, stok minimum, harga satuan, dan status untuk membantu proses transaksi di kasir.",
   Owner:
-    "Pantau ketersediaan stok barang, stok minimum, harga satuan, dan status untuk memantau persediaan dan mengambil keputusan pengadaan.",
+    "Lihat laporan stok barang, stok minimum, stok tersedia, dan status persediaan sebagai dasar evaluasi dan pengambilan keputusan pengadaan.",
 };
 
 export default async function StockInformationContent({
@@ -43,7 +43,10 @@ export default async function StockInformationContent({
       harga_jual: true,
     },
   });
-  const currentStock = await getAvailableStock(prisma);
+  const inventory = await getInventorySummary(prisma);
+  const inventoryByProduct = new Map(
+    inventory.map((item) => [item.id_barang, item]),
+  );
 
   const items: StockInformationItem[] = products.map((product) => ({
     id_barang: product.id_barang,
@@ -51,19 +54,29 @@ export default async function StockInformationContent({
     kategori: product.kategori,
     satuan: product.satuan,
     stok_minimum: product.stok_minimum ?? 0,
-    stok: currentStock.get(product.id_barang) ?? 0,
+    stok: inventoryByProduct.get(product.id_barang)?.stok ?? 0,
+    stok_masuk: inventoryByProduct.get(product.id_barang)?.stok_masuk ?? 0,
+    stok_keluar: inventoryByProduct.get(product.id_barang)?.stok_keluar ?? 0,
     harga_jual: product.harga_jual.toString(),
   }));
 
   return (
-    <main className="role-dashboard stock-check-screen stock-info-screen">
+    <main
+      className={`role-dashboard stock-check-screen stock-info-screen${
+        role === "Owner" ? " owner-stock-report" : ""
+      }`}
+    >
       <header className="role-dashboard-header">
         <div className="role-dashboard-brand">
           <Image
             alt=""
             aria-hidden="true"
             height={31}
-            src="/images/cashier-brand-mark.png"
+            src={
+              role === "Owner"
+                ? "/images/owner-home-brand.png"
+                : "/images/cashier-brand-mark.png"
+            }
             width={31}
           />
           <div>
@@ -79,20 +92,24 @@ export default async function StockInformationContent({
       <section aria-label="Informasi stok" className="role-dashboard-hero">
         <div className="role-dashboard-hero-copy">
           <span className="role-dashboard-role">{role}</span>
-          <h1>Informasi Stok</h1>
+          <h1>{role === "Owner" ? "Laporan Stok" : "Informasi Stok"}</h1>
           <p>{descriptions[role]}</p>
         </div>
         <div aria-hidden="true" className="role-dashboard-avatar">
           <Image
             alt=""
             height={72}
-            src="/images/cashier-avatar.png"
+            src={
+              role === "Owner"
+                ? "/images/owner-home-avatar.png"
+                : "/images/cashier-avatar.png"
+            }
             width={72}
           />
         </div>
       </section>
 
-      <StockInformationTable items={items} />
+      <StockInformationTable items={items} role={role} />
     </main>
   );
 }

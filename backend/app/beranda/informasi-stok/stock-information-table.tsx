@@ -10,13 +10,15 @@ export type StockInformationItem = {
   satuan: string;
   stok_minimum: number;
   stok: number;
+  stok_masuk: number;
+  stok_keluar: number;
   harga_jual: string;
 };
 
 type SortKey = keyof StockInformationItem | "status";
 type SortDirection = "ascending" | "descending";
 
-const columns: { key: SortKey; label: string }[] = [
+const cashierColumns: { key: SortKey; label: string }[] = [
   { key: "id_barang", label: "ID Barang" },
   { key: "nama_barang", label: "Nama Barang" },
   { key: "kategori", label: "Kategori" },
@@ -24,6 +26,18 @@ const columns: { key: SortKey; label: string }[] = [
   { key: "stok", label: "Stok" },
   { key: "stok_minimum", label: "Stok Minimum" },
   { key: "harga_jual", label: "Harga Satuan" },
+  { key: "status", label: "Status" },
+];
+
+const ownerColumns: { key: SortKey; label: string }[] = [
+  { key: "id_barang", label: "ID Barang" },
+  { key: "nama_barang", label: "Nama Barang" },
+  { key: "kategori", label: "Kategori" },
+  { key: "satuan", label: "Satuan" },
+  { key: "stok_minimum", label: "Stok Minimum" },
+  { key: "stok_masuk", label: "Stok Masuk" },
+  { key: "stok_keluar", label: "Stok Keluar" },
+  { key: "stok", label: "Stok Tersedia" },
   { key: "status", label: "Status" },
 ];
 
@@ -69,9 +83,13 @@ function formatPrice(price: string) {
 
 export default function StockInformationTable({
   items,
+  role,
 }: {
   items: StockInformationItem[];
+  role: "Owner" | "Karyawan Kasir";
 }) {
+  const isOwner = role === "Owner";
+  const columns = isOwner ? ownerColumns : cashierColumns;
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("id_barang");
   const [sortDirection, setSortDirection] =
@@ -107,7 +125,7 @@ export default function StockInformationTable({
 
   return (
     <section
-      aria-label="Tabel informasi stok"
+      aria-label={isOwner ? "Tabel laporan stok" : "Tabel informasi stok"}
       className="stock-info-panel"
     >
       <div className="stock-info-toolbar">
@@ -130,18 +148,31 @@ export default function StockInformationTable({
       </div>
 
       <div className="stock-info-table-viewport">
-        <table className="stock-info-table">
+        <table className={`stock-info-table${isOwner ? " is-owner" : ""}`}>
           <caption className="sr-only">
-            Informasi stok, minimum, harga, dan status setiap barang
+            {isOwner
+              ? "Laporan stok masuk, stok keluar, stok tersedia, minimum, dan status setiap barang"
+              : "Informasi stok, minimum, harga, dan status setiap barang"}
           </caption>
           <colgroup>
             <col className="stock-info-col-id" />
             <col className="stock-info-col-name" />
             <col className="stock-info-col-category" />
             <col className="stock-info-col-unit" />
-            <col className="stock-info-col-stock" />
-            <col className="stock-info-col-minimum" />
-            <col className="stock-info-col-price" />
+            {isOwner ? (
+              <>
+                <col className="stock-info-col-minimum" />
+                <col className="stock-info-col-incoming" />
+                <col className="stock-info-col-outgoing" />
+                <col className="stock-info-col-stock" />
+              </>
+            ) : (
+              <>
+                <col className="stock-info-col-stock" />
+                <col className="stock-info-col-minimum" />
+                <col className="stock-info-col-price" />
+              </>
+            )}
             <col className="stock-info-col-status" />
           </colgroup>
           <thead>
@@ -198,11 +229,28 @@ export default function StockInformationTable({
                     <td className="stock-info-name">{item.nama_barang}</td>
                     <td>{item.kategori}</td>
                     <td>{item.satuan}</td>
-                    <td className="stock-info-stock">{item.stok}</td>
-                    <td className="stock-info-minimum">
-                      {item.stok_minimum}
-                    </td>
-                    <td>{formatPrice(item.harga_jual)}</td>
+                    {isOwner ? (
+                      <>
+                        <td className="stock-info-minimum">
+                          {item.stok_minimum}
+                        </td>
+                        <td className="stock-info-movement">
+                          {item.stok_masuk || "—"}
+                        </td>
+                        <td className="stock-info-movement">
+                          {item.stok_keluar || "—"}
+                        </td>
+                        <td className="stock-info-stock">{item.stok}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="stock-info-stock">{item.stok}</td>
+                        <td className="stock-info-minimum">
+                          {item.stok_minimum}
+                        </td>
+                        <td>{formatPrice(item.harga_jual)}</td>
+                      </>
+                    )}
                     <td>
                       <span
                         className={`stock-check-status-pill ${

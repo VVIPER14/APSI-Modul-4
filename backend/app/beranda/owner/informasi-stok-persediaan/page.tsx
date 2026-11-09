@@ -4,7 +4,7 @@ import StockInformationContent from "@/app/beranda/informasi-stok/page-content";
 export const instant = false;
 
 export const metadata: Metadata = {
-  title: "Informasi Stok Persediaan | Apotek Media Medika",
+  title: "Laporan Stok Barang | Apotek Media Medika",
 };
 
 export default function StockInformationPage() {

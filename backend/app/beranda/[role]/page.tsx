@@ -39,8 +39,8 @@ const dashboardCards: Record<string, [string, string, string]> = {
     "Penerimaan Barang",
   ],
   owner: [
-    "Informasi Stok Persediaan",
-    "Persetujuan Pengajuan Pemesanan",
+    "Laporan Stok Barang",
+    "Pengajuan Pemesanan",
     "Laporan Keuangan",
   ],
   admin: ["Data Master", "Verifikasi Data", "Laporan Persediaan"],

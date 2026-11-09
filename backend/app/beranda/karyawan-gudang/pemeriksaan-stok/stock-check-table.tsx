@@ -9,9 +9,12 @@ type NoteChoice = (typeof noteChoices)[number] | "";
 type StockItem = {
   id_barang: string;
   nama_barang: string;
+  kategori: string;
   satuan: string;
   stok_minimum: number;
   stok: number;
+  stok_masuk: number;
+  stok_keluar: number;
   catatan: string;
 };
 
@@ -23,8 +26,11 @@ type DraftStockItem = StockItem & {
 type SortKey =
   | "id_barang"
   | "nama_barang"
+  | "kategori"
   | "satuan"
   | "stok_minimum"
+  | "stok_masuk"
+  | "stok_keluar"
   | "stok"
   | "catatan"
   | "status";
@@ -250,10 +256,18 @@ export default function StockCheckTable({
         return;
       }
 
+      const savedItems = items.map((item) => ({
+        ...item,
+        ...(changedItemIds.has(item.id_barang)
+          ? { stok_masuk: 0, stok_keluar: 0 }
+          : {}),
+      }));
+      setItems(savedItems);
       setOriginalItems(
-        items.map(({ pilihanCatatan, catatanLainnya, ...item }) => ({
+        savedItems.map(({ pilihanCatatan, catatanLainnya, ...item }) => ({
           ...item,
-          catatan: getStoredNote({ ...item, pilihanCatatan, catatanLainnya }) ?? "",
+          catatan:
+            getStoredNote({ ...item, pilihanCatatan, catatanLainnya }) ?? "",
         })),
       );
       setChangedItemIds(new Set());
@@ -343,8 +357,11 @@ export default function StockCheckTable({
           <div className="stock-check-table-header" role="row">
             {renderHeader("id_barang", "ID Barang")}
             {renderHeader("nama_barang", "Nama Barang")}
+            {renderHeader("kategori", "Kategori")}
             {renderHeader("satuan", "Satuan")}
             {renderHeader("stok_minimum", "Stok Minimum")}
+            {renderHeader("stok_masuk", "Stok Masuk")}
+            {renderHeader("stok_keluar", "Stok Keluar")}
             {renderHeader("stok", "Stok Tersedia")}
             {renderHeader("catatan", "Catatan")}
             {renderHeader("status", "Status")}
@@ -367,9 +384,16 @@ export default function StockCheckTable({
                   <span className="stock-check-product-name" role="cell">
                     {item.nama_barang}
                   </span>
+                  <span role="cell">{item.kategori}</span>
                   <span role="cell">{item.satuan}</span>
                   <span className="stock-check-number" role="cell">
                     {item.stok_minimum}
+                  </span>
+                  <span className="stock-check-number" role="cell">
+                    {item.stok_masuk || "—"}
+                  </span>
+                  <span className="stock-check-number" role="cell">
+                    {item.stok_keluar || "—"}
                   </span>
                   <span className="stock-check-available" role="cell">
                     {isEditing ? (

@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { dashboardPathForRole, getCurrentSession } from "@/app/lib/auth";
+import { getInventorySummary } from "@/app/lib/inventory";
 import { prisma } from "@/app/lib/prisma";
 import StockCheckTable from "./stock-check-table";
 
@@ -61,6 +62,7 @@ async function StockCheckContent() {
     select: {
       id_barang: true,
       nama_barang: true,
+      kategori: true,
       satuan: true,
       stok_minimum: true,
       detail_pemeriksaan: {
@@ -73,16 +75,24 @@ async function StockCheckContent() {
       },
     },
   });
+  const inventory = await getInventorySummary(prisma);
+  const inventoryByProduct = new Map(
+    inventory.map((item) => [item.id_barang, item]),
+  );
 
   const initialItems = products.map((product) => {
     const latestCheck = product.detail_pemeriksaan[0];
+    const stockSummary = inventoryByProduct.get(product.id_barang);
 
     return {
       id_barang: product.id_barang,
       nama_barang: product.nama_barang,
+      kategori: product.kategori,
       satuan: product.satuan,
       stok_minimum: product.stok_minimum ?? 0,
-      stok: latestCheck?.stok ?? 0,
+      stok: stockSummary?.stok ?? 0,
+      stok_masuk: stockSummary?.stok_masuk ?? 0,
+      stok_keluar: stockSummary?.stok_keluar ?? 0,
       catatan:
         latestCheck?.catatan && latestCheck.catatan !== "-"
           ? latestCheck.catatan
@@ -116,8 +126,8 @@ async function StockCheckContent() {
           <span className="role-dashboard-role">Karyawan Gudang</span>
           <h1>Pemeriksaan Stok</h1>
           <p>
-            Pantau persediaan, catat selisih stok fisik, dan perbarui jumlah
-            stok setelah pemeriksaan.
+            Periksa stok masuk, stok keluar, dan stok tersedia; catat kesesuaian
+            stok serta perbarui jumlah setelah pemeriksaan.
           </p>
         </div>
         <div aria-hidden="true" className="role-dashboard-avatar">
