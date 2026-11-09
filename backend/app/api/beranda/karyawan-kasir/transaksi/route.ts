@@ -56,14 +56,23 @@ function getJakartaDate() {
     month: "2-digit",
     timeZone: "Asia/Jakarta",
     year: "numeric",
+    hour: "2-digit",
+    hourCycle: "h23",
+    minute: "2-digit",
+    second: "2-digit",
   }).formatToParts(new Date());
-  const part = (type: "year" | "month" | "day") =>
+  const part = (
+    type: "year" | "month" | "day" | "hour" | "minute" | "second",
+  ) =>
     parts.find((value) => value.type === type)?.value ?? "";
   const date = `${part("year")}-${part("month")}-${part("day")}`;
+  const time = `${part("hour")}:${part("minute")}:${part("second")}`;
 
   return {
     date,
     databaseDate: new Date(`${date}T00:00:00.000Z`),
+    time,
+    databaseTime: new Date(`1970-01-01T${time}.000Z`),
   };
 }
 
@@ -202,12 +211,13 @@ export async function POST(request: Request) {
         };
       }
 
-      const { date, databaseDate } = getJakartaDate();
+      const { date, databaseDate, time, databaseTime } = getJakartaDate();
 
       await transaction.transaksi.create({
         data: {
           id_transaksi,
           tanggal_transaksi: databaseDate,
+          waktu_transaksi: databaseTime,
           id_kasir: session.userId,
           total_harga: total,
           status_transaksi: "Selesai",
@@ -226,6 +236,7 @@ export async function POST(request: Request) {
         transaction: {
           id_transaksi,
           tanggal_transaksi: date,
+          waktu_transaksi: time,
           total_harga: total.toFixed(0),
           items: lines.map((line) => ({
             id_barang: line.id_barang,

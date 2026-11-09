@@ -116,18 +116,19 @@ INSERT INTO Pemeriksaan_Stok (id_pemeriksaan, tanggal_pemeriksaan, id_pemeriksa)
 -- 2.5 Data Transaksi (Penjualan)
 CREATE TABLE Transaksi (
     id_transaksi VARCHAR(255) PRIMARY KEY,
-    tanggal_transaksi DATETIME,
+    tanggal_transaksi DATE,
+    waktu_transaksi TIME,
     id_kasir VARCHAR(255),
     total_harga DECIMAL(10, 2),
     status_transaksi VARCHAR(50),
     FOREIGN KEY (id_kasir) REFERENCES Pengguna(id_pengguna)
 );
-INSERT INTO Transaksi (id_transaksi, tanggal_transaksi, id_kasir, total_harga, status_transaksi) VALUES
-('TRX001', '2026-09-04 10:20:00', 'USR004', 61000, 'Selesai'),
-('TRX002', '2026-09-19 14:05:00', 'USR004', 124000, 'Selesai'),
-('TRX003', '2026-09-30 16:40:00', 'USR004', 88000, 'Selesai'),
-('TRX004', '2026-10-09 09:30:00', 'USR004', 78000, 'Selesai'),
-('TRX005', '2026-10-15 17:30:00', 'USR004', 83500, 'Selesai');
+INSERT INTO Transaksi (id_transaksi, tanggal_transaksi, waktu_transaksi, id_kasir, total_harga, status_transaksi) VALUES
+('TRX001', '2026-09-04', '10:20:00', 'USR004', 61000, 'Selesai'),
+('TRX002', '2026-09-19', '14:05:00', 'USR004', 124000, 'Selesai'),
+('TRX003', '2026-09-30', '16:40:00', 'USR004', 88000, 'Selesai'),
+('TRX004', '2026-10-09', '09:30:00', 'USR004', 78000, 'Selesai'),
+('TRX005', '2026-10-15', '17:30:00', 'USR004', 83500, 'Selesai');
 
 -- 3.1 Detail Pengajuan
 CREATE TABLE Detail_Pengajuan (
@@ -240,3 +241,22 @@ INSERT INTO Detail_Transaksi (id_transaksi, id_barang, jumlah_jual, harga_satuan
 ('TRX005', 'BRG001', 15, 2500),
 ('TRX005', 'BRG009', 10, 3000),
 ('TRX005', 'BRG005', 1, 16000);
+
+CREATE TABLE laporan_stok_harian (
+    tanggal_laporan DATE NOT NULL,
+    id_barang VARCHAR(255) NOT NULL,
+    nama_barang VARCHAR(255) NOT NULL,
+    kategori VARCHAR(255) NOT NULL,
+    satuan VARCHAR(255) NOT NULL,
+    stok_minimum INTEGER NOT NULL,
+    stok_masuk INTEGER NOT NULL,
+    stok_keluar INTEGER NOT NULL,
+    stok_akhir INTEGER NOT NULL,
+    PRIMARY KEY (tanggal_laporan, id_barang)
+);
+
+CREATE TABLE laporan_keuangan_harian (
+    tanggal_laporan DATE PRIMARY KEY,
+    total_pemasukan DECIMAL(19, 0) NOT NULL DEFAULT 0,
+    jumlah_transaksi INTEGER NOT NULL DEFAULT 0
+);

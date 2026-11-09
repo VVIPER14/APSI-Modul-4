@@ -27,11 +27,10 @@ export async function generateMetadata({
   };
 }
 
-const dashboardCards: Record<string, [string, string, string]> = {
+const dashboardCards: Record<string, string[]> = {
   "karyawan-kasir": [
-    "Cek Ketersediaan Obat",
     "Buat Pesanan Baru",
-    "Cek Riwayat Transaksi",
+    "Riwayat Transaksi",
   ],
   "karyawan-gudang": [
     "Pemeriksaan Stok",
@@ -48,7 +47,7 @@ const dashboardCards: Record<string, [string, string, string]> = {
 
 const roleDescriptions: Record<string, string> = {
   "karyawan-kasir":
-    "Beranda operasional kasir untuk pencarian obat, pembuatan pesanan, dan pemantauan transaksi.",
+    "Beranda operasional kasir untuk pembuatan pesanan dan pemantauan riwayat transaksi.",
   "karyawan-gudang":
     "Beranda operasional gudang untuk pemantauan stok, pengajuan pemesanan, dan penerimaan barang.",
   owner:
@@ -59,6 +58,10 @@ const roleDescriptions: Record<string, string> = {
 
 const defaultMenuIcons: [string, string, string] = [
   "/images/cashier-search.svg",
+  "/images/cashier-plus-circle.svg",
+  "/images/cashier-package.svg",
+];
+const cashierMenuIcons = [
   "/images/cashier-plus-circle.svg",
   "/images/cashier-package.svg",
 ];
@@ -146,7 +149,13 @@ function RoleDashboard({
                 <Image
                   alt=""
                   height={20}
-                  src={(role === "owner" ? ownerMenuIcons : defaultMenuIcons)[index]}
+                  src={
+                    role === "owner"
+                      ? ownerMenuIcons[index]
+                      : role === "karyawan-kasir"
+                        ? cashierMenuIcons[index]
+                        : defaultMenuIcons[index]
+                  }
                   width={20}
                 />
               </span>
@@ -167,18 +176,20 @@ function RoleDashboard({
           );
 
           const menuHref =
-            role === "karyawan-gudang" && index === 0
+            role === "karyawan-kasir" && index === 0
+              ? "/beranda/karyawan-kasir/form-pemesanan/"
+              : role === "karyawan-kasir" && index === 1
+                ? "/beranda/karyawan-kasir/riwayat-transaksi/"
+                : role === "karyawan-gudang" && index === 0
               ? "/beranda/karyawan-gudang/pemeriksaan-stok/"
               : role === "karyawan-gudang" && index === 1
                 ? "/beranda/karyawan-gudang/pengajuan-pemesanan/"
-              : role === "karyawan-kasir" && index === 0
-                ? "/beranda/karyawan-kasir/cek-ketersediaan-obat/"
-                : role === "karyawan-kasir" && index === 1
-                  ? "/beranda/karyawan-kasir/form-pemesanan/"
-                  : role === "owner" && index === 0
-                    ? "/beranda/owner/informasi-stok-persediaan/"
-                    : role === "owner" && index === 1
-                      ? "/beranda/owner/persetujuan-pengajuan-pemesanan/"
+                : role === "owner" && index === 0
+                  ? "/beranda/owner/informasi-stok-persediaan/"
+                  : role === "owner" && index === 1
+                    ? "/beranda/owner/persetujuan-pengajuan-pemesanan/"
+                    : role === "owner" && index === 2
+                      ? "/beranda/owner/laporan-keuangan/"
                       : null;
 
           return menuHref ? (

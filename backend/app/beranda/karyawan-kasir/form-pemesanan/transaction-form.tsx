@@ -29,6 +29,7 @@ type ReceiptItem = {
 type Receipt = {
   id_transaksi: string;
   tanggal_transaksi: string;
+  waktu_transaksi: string;
   total_harga: string;
   items: ReceiptItem[];
 };
@@ -48,6 +49,11 @@ function formatCurrency(value: string | bigint) {
   return `Rp${currencyFormatter.format(
     typeof value === "bigint" ? value : BigInt(value),
   )}`;
+}
+
+function formatReceiptDate(date: string) {
+  const [year, month, day] = date.split("-");
+  return `${day}-${month}-${year}`;
 }
 
 function compareProducts(
@@ -83,6 +89,7 @@ function parseReceipt(value: unknown): Receipt | null {
     !isRecord(value) ||
     typeof value.id_transaksi !== "string" ||
     typeof value.tanggal_transaksi !== "string" ||
+    typeof value.waktu_transaksi !== "string" ||
     typeof value.total_harga !== "string" ||
     !Array.isArray(value.items)
   ) {
@@ -119,6 +126,7 @@ function parseReceipt(value: unknown): Receipt | null {
   return {
     id_transaksi: value.id_transaksi,
     tanggal_transaksi: value.tanggal_transaksi,
+    waktu_transaksi: value.waktu_transaksi,
     total_harga: value.total_harga,
     items,
   };
@@ -131,6 +139,7 @@ export default function TransactionForm({
   catalog: CatalogProduct[];
   cashierName: string;
 }) {
+  const [products, setProducts] = useState(catalog);
   const [cart, setCart] = useState<Cart>({});
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("id_barang");
@@ -143,25 +152,25 @@ export default function TransactionForm({
   const [printReceiptId, setPrintReceiptId] = useState<string | null>(null);
 
   const productsById = useMemo(
-    () => new Map(catalog.map((product) => [product.id_barang, product])),
-    [catalog],
+    () => new Map(products.map((product) => [product.id_barang, product])),
+    [products],
   );
   const visibleProducts = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("id");
     const filtered = query
-      ? catalog.filter(
+      ? products.filter(
           (product) =>
             product.id_barang.toLocaleLowerCase("id").includes(query) ||
             product.nama_barang.toLocaleLowerCase("id").includes(query) ||
             product.kategori.toLocaleLowerCase("id").includes(query),
         )
-      : catalog;
+      : products;
 
     return [...filtered].sort((first, second) => {
       const compared = compareProducts(first, second, sortKey);
       return sortDirection === "ascending" ? compared : -compared;
     });
-  }, [catalog, search, sortDirection, sortKey]);
+  }, [products, search, sortDirection, sortKey]);
 
   const cartItems = useMemo(
     () =>
@@ -302,6 +311,16 @@ export default function TransactionForm({
       }
 
       setReceipt(savedReceipt);
+      setProducts((current) =>
+        current.map((product) => {
+          const soldItem = savedReceipt.items.find(
+            (item) => item.id_barang === product.id_barang,
+          );
+          return soldItem
+            ? { ...product, stok: Math.max(0, product.stok - soldItem.jumlah_jual) }
+            : product;
+        }),
+      );
       setCart({});
       setIsConfirming(false);
       if (shouldPrint) {
@@ -442,7 +461,7 @@ export default function TransactionForm({
                 ) : (
                   <tr>
                     <td className="transaction-empty" colSpan={columns.length + 1}>
-                      {catalog.length > 0
+                      {products.length > 0
                         ? "Barang tidak ditemukan."
                         : "Belum ada data barang."}
                     </td>
@@ -660,7 +679,11 @@ export default function TransactionForm({
             </div>
             <div>
               <dt>Tanggal</dt>
-              <dd>{receipt.tanggal_transaksi}</dd>
+              <dd>{formatReceiptDate(receipt.tanggal_transaksi)}</dd>
+            </div>
+            <div>
+              <dt>Waktu</dt>
+              <dd>{receipt.waktu_transaksi} WIB</dd>
             </div>
             <div>
               <dt>Kasir</dt>

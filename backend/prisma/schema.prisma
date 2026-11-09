@@ -77,6 +77,27 @@ model detail_transaksi {
   @@id([id_transaksi, id_barang])
 }
 
+model laporan_stok_harian {
+  tanggal_laporan DateTime @db.Date
+  id_barang       String   @db.VarChar(255)
+  nama_barang     String   @db.VarChar(255)
+  kategori        String   @db.VarChar(255)
+  satuan          String   @db.VarChar(255)
+  stok_minimum    Int
+  stok_masuk      Int
+  stok_keluar     Int
+  stok_akhir      Int
+
+  @@id([tanggal_laporan, id_barang])
+  @@index([id_barang, tanggal_laporan])
+}
+
+model laporan_keuangan_harian {
+  tanggal_laporan  DateTime @id @db.Date
+  total_pemasukan  Decimal  @default(0) @db.Decimal(19, 0)
+  jumlah_transaksi Int      @default(0)
+}
+
 model pemeriksaan_stok {
   id_pemeriksaan      String               @id @db.VarChar(255)
   tanggal_pemeriksaan DateTime             @db.Date
@@ -150,6 +171,7 @@ model supplier {
 model transaksi {
   id_transaksi      String             @id @db.VarChar(255)
   tanggal_transaksi DateTime           @db.Date
+  waktu_transaksi   DateTime           @db.Time(6)
   id_kasir          String?            @db.VarChar(255)
   total_harga       Decimal?           @default(0) @db.Decimal(19, 0)
   status_transaksi  String             @db.VarChar(255)

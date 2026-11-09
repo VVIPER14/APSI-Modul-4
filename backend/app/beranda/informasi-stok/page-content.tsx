@@ -5,6 +5,11 @@ import { connection } from "next/server";
 import { dashboardPathForRole, getCurrentSession } from "@/app/lib/auth";
 import { getInventorySummary } from "@/app/lib/inventory";
 import { prisma } from "@/app/lib/prisma";
+import {
+  getDailyStockReport,
+  getPreviousJakartaDate,
+  isValidReportDate,
+} from "@/app/lib/reports";
 import StockInformationTable, {
   type StockInformationItem,
 } from "./stock-information-table";
@@ -18,8 +23,10 @@ const descriptions: Record<"Owner" | "Karyawan Kasir", string> = {
 
 export default async function StockInformationContent({
   role,
+  reportDate,
 }: {
   role: "Owner" | "Karyawan Kasir";
+  reportDate?: string;
 }) {
   await connection();
   const session = await getCurrentSession();
@@ -32,33 +39,57 @@ export default async function StockInformationContent({
     redirect(dashboardPathForRole(session.role) ?? "/");
   }
 
-  const products = await prisma.barang.findMany({
-    orderBy: { nama_barang: "asc" },
-    select: {
-      id_barang: true,
-      nama_barang: true,
-      kategori: true,
-      satuan: true,
-      stok_minimum: true,
-      harga_jual: true,
-    },
-  });
-  const inventory = await getInventorySummary(prisma);
-  const inventoryByProduct = new Map(
-    inventory.map((item) => [item.id_barang, item]),
-  );
+  const selectedDate =
+    role === "Owner" &&
+    reportDate &&
+    isValidReportDate(reportDate) &&
+    reportDate <= getPreviousJakartaDate()
+      ? reportDate
+      : getPreviousJakartaDate();
+  let items: StockInformationItem[];
 
-  const items: StockInformationItem[] = products.map((product) => ({
-    id_barang: product.id_barang,
-    nama_barang: product.nama_barang,
-    kategori: product.kategori,
-    satuan: product.satuan,
-    stok_minimum: product.stok_minimum ?? 0,
-    stok: inventoryByProduct.get(product.id_barang)?.stok ?? 0,
-    stok_masuk: inventoryByProduct.get(product.id_barang)?.stok_masuk ?? 0,
-    stok_keluar: inventoryByProduct.get(product.id_barang)?.stok_keluar ?? 0,
-    harga_jual: product.harga_jual.toString(),
-  }));
+  if (role === "Owner") {
+    const report = await getDailyStockReport(selectedDate);
+    items = report.map((item) => ({
+      id_barang: item.id_barang,
+      nama_barang: item.nama_barang,
+      kategori: item.kategori,
+      satuan: item.satuan,
+      stok_minimum: item.stok_minimum,
+      stok: item.stok_akhir,
+      stok_masuk: item.stok_masuk,
+      stok_keluar: item.stok_keluar,
+      harga_jual: "0",
+    }));
+  } else {
+    const products = await prisma.barang.findMany({
+      orderBy: { nama_barang: "asc" },
+      select: {
+        id_barang: true,
+        nama_barang: true,
+        kategori: true,
+        satuan: true,
+        stok_minimum: true,
+        harga_jual: true,
+      },
+    });
+    const inventory = await getInventorySummary(prisma);
+    const inventoryByProduct = new Map(
+      inventory.map((item) => [item.id_barang, item]),
+    );
+
+    items = products.map((product) => ({
+      id_barang: product.id_barang,
+      nama_barang: product.nama_barang,
+      kategori: product.kategori,
+      satuan: product.satuan,
+      stok_minimum: product.stok_minimum ?? 0,
+      stok: inventoryByProduct.get(product.id_barang)?.stok ?? 0,
+      stok_masuk: inventoryByProduct.get(product.id_barang)?.stok_masuk ?? 0,
+      stok_keluar: inventoryByProduct.get(product.id_barang)?.stok_keluar ?? 0,
+      harga_jual: product.harga_jual.toString(),
+    }));
+  }
 
   return (
     <main
@@ -108,6 +139,21 @@ export default async function StockInformationContent({
           />
         </div>
       </section>
+
+      {role === "Owner" ? (
+        <form className="daily-report-toolbar" method="get">
+          <label htmlFor="stock-report-date">Pilih tanggal laporan stok</label>
+          <input
+            defaultValue={selectedDate}
+            id="stock-report-date"
+            max={getPreviousJakartaDate()}
+            name="tanggal"
+            type="date"
+          />
+          <button type="submit">Lihat Laporan</button>
+          <p>Rekap stok masuk, stok keluar, dan stok akhir per tanggal.</p>
+        </form>
+      ) : null}
 
       <StockInformationTable items={items} role={role} />
     </main>
