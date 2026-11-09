@@ -2,6 +2,9 @@
 
 import { useMemo, useState } from "react";
 import type { DailyFinancialPoint } from "@/app/lib/reports";
+import SortableRecordTable, {
+  type SortableRecord,
+} from "@/app/lib/sortable-record-table";
 
 type Period = "hari" | "minggu" | "bulan";
 type ChartPoint = {
@@ -88,6 +91,11 @@ export default function FinancialReportChart({
     (highest, point) => (point.amount > highest ? point.amount : highest),
     BigInt(0),
   );
+  const historyRows: SortableRecord[] = data.map((item) => ({
+    tanggal_laporan: item.tanggal_laporan,
+    jumlah_transaksi: item.jumlah_transaksi,
+    total_pemasukan: item.total_pemasukan,
+  }));
 
   return (
     <>
@@ -154,26 +162,22 @@ export default function FinancialReportChart({
       <section aria-label="Riwayat pemasukan harian" className="report-panel">
         <h2>Riwayat Pemasukan Harian</h2>
         <div className="report-table-viewport">
-          <table className="report-table">
-            <thead>
-              <tr>
-                <th scope="col">Tanggal</th>
-                <th scope="col">Jumlah Transaksi</th>
-                <th scope="col">Total Pemasukan</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...data].reverse().map((item) => (
-                <tr key={item.tanggal_laporan}>
-                  <td>{formatLabel(item.tanggal_laporan, "hari")}</td>
-                  <td>{item.jumlah_transaksi}</td>
-                  <td>
-                    Rp{rupiahFormatter.format(BigInt(item.total_pemasukan))}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <SortableRecordTable
+            caption="Riwayat pemasukan harian"
+            columns={[
+              { key: "tanggal_laporan", label: "Tanggal", format: "date" },
+              { key: "jumlah_transaksi", label: "Jumlah Transaksi" },
+              {
+                key: "total_pemasukan",
+                label: "Total Pemasukan",
+                format: "currency",
+              },
+            ]}
+            emptyMessage="Belum ada riwayat pemasukan."
+            initialDirection="desc"
+            initialSortKey="tanggal_laporan"
+            rows={historyRows}
+          />
         </div>
       </section>
     </>

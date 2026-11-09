@@ -1398,6 +1398,325 @@ input {
   vertical-align: middle;
 }
 
+.database-panel {
+  display: flex;
+  width: min(1296px, calc(100% - 64px));
+  flex-direction: column;
+  gap: 16px;
+  margin: 32px auto 0;
+  padding: 24px;
+  border: 1px solid rgb(255 255 255 / 13%);
+  border-radius: 28px;
+  background: rgb(255 255 255 / 5%);
+  box-shadow: 0 16px 32px rgb(0 0 0 / 25%);
+  backdrop-filter: blur(24px);
+}
+
+.database-toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.database-table-select,
+.database-search {
+  display: grid;
+  min-height: 48px;
+  gap: 5px;
+  color: rgb(255 255 255 / 78%);
+  font-family: var(--font-poppins), Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.database-table-select select {
+  min-width: 240px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 10px;
+  background: #273443;
+  color: #fff;
+  font: inherit;
+}
+
+.database-search {
+  display: flex;
+  width: min(320px, 100%);
+  height: 40px;
+  align-items: center;
+  gap: 9px;
+  padding: 0 12px;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 7%);
+}
+
+.database-search img {
+  flex: 0 0 18px;
+}
+
+.database-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #fff;
+  font: 12px var(--font-inter), Arial, sans-serif;
+}
+
+.database-search input::placeholder {
+  color: rgb(255 255 255 / 60%);
+}
+
+.database-add-button,
+.database-pagination button {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid rgb(2 233 217 / 35%);
+  border-radius: 10px;
+  background: rgb(2 233 217 / 14%);
+  color: #fff;
+  cursor: pointer;
+  font: 600 12px var(--font-poppins), Arial, sans-serif;
+  white-space: nowrap;
+}
+
+.database-add-button {
+  margin-left: auto;
+}
+
+.database-add-button:disabled,
+.database-pagination button:disabled,
+.database-row-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.database-table-description,
+.database-notice {
+  margin: 0;
+  color: rgb(255 255 255 / 73%);
+  font: 12px/1.5 var(--font-inter), Arial, sans-serif;
+}
+
+.database-table-description strong {
+  color: #fff;
+}
+
+.database-notice {
+  color: #86efac;
+}
+
+.database-table-viewport {
+  max-height: 560px;
+  overflow: auto;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 16px;
+  scrollbar-color: rgb(255 255 255 / 32%) transparent;
+  scrollbar-width: thin;
+}
+
+.database-table {
+  width: 100%;
+  min-width: 1100px;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: rgb(255 255 255 / 88%);
+  font: 12px var(--font-poppins), Arial, sans-serif;
+  text-align: left;
+}
+
+.database-table th {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  padding: 8px 10px;
+  background: #39404d;
+  white-space: nowrap;
+}
+
+.database-table th button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.database-sort-icon {
+  display: flex;
+  align-items: center;
+  opacity: 0.65;
+}
+
+.database-sort-icon.is-descending img {
+  transform: rotate(180deg);
+}
+
+.database-table td {
+  max-width: 360px;
+  padding: 11px 10px;
+  border-top: 1px solid rgb(255 255 255 / 9%);
+  overflow-wrap: anywhere;
+}
+
+.database-row-actions {
+  display: flex;
+  min-width: 140px;
+  gap: 7px;
+}
+
+.database-row-actions button {
+  padding: 6px 10px;
+  border: 1px solid rgb(255 255 255 / 17%);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 8%);
+  color: #fff;
+  cursor: pointer;
+  font: 11px var(--font-poppins), Arial, sans-serif;
+}
+
+.database-row-actions .database-delete-button {
+  border-color: rgb(255 101 101 / 30%);
+  background: rgb(170 41 41 / 24%);
+}
+
+.database-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: rgb(255 255 255 / 76%);
+  font: 12px var(--font-inter), Arial, sans-serif;
+}
+
+.database-pagination > div {
+  display: flex;
+  gap: 8px;
+}
+
+.database-pagination button {
+  min-height: 34px;
+  padding: 6px 10px;
+}
+
+.database-dialog-backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(5 10 18 / 76%);
+  backdrop-filter: blur(8px);
+}
+
+.database-dialog {
+  display: flex;
+  width: min(760px, 100%);
+  max-height: min(88svh, 900px);
+  flex-direction: column;
+  gap: 18px;
+  overflow: auto;
+  padding: 24px;
+  border: 1px solid rgb(255 255 255 / 17%);
+  border-radius: 22px;
+  background: #202b3b;
+  box-shadow: 0 24px 70px rgb(0 0 0 / 42%);
+}
+
+.database-dialog > header,
+.database-dialog > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.database-dialog > header span {
+  color: rgb(255 255 255 / 66%);
+  font-size: 12px;
+}
+
+.database-dialog h2 {
+  margin: 4px 0 0;
+  color: #fff;
+  font-size: 20px;
+}
+
+.database-dialog > header button {
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 50%;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  font-size: 22px;
+}
+
+.database-form-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px;
+}
+
+.database-form-fields label {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  color: rgb(255 255 255 / 79%);
+  font: 11px var(--font-poppins), Arial, sans-serif;
+}
+
+.database-form-fields input {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid rgb(255 255 255 / 19%);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 7%);
+  color: #fff;
+  font: 12px var(--font-inter), Arial, sans-serif;
+}
+
+.database-form-fields input:disabled {
+  opacity: 0.6;
+}
+
+.database-dialog > footer {
+  justify-content: flex-end;
+}
+
+.database-dialog > footer button {
+  min-height: 38px;
+  padding: 7px 15px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 9px;
+  color: #fff;
+  cursor: pointer;
+  font: 600 12px var(--font-poppins), Arial, sans-serif;
+}
+
+.database-cancel-button {
+  background: transparent;
+}
+
+.database-save-button {
+  border-color: rgb(2 233 217 / 35%) !important;
+  background: rgb(2 233 217 / 20%);
+}
+
 .receipt-order-heading h2 {
   margin: 0;
 }
@@ -1599,7 +1918,8 @@ input {
 
 @media (max-width: 760px) {
   .proposal-panel,
-  .approval-panel {
+  .approval-panel,
+  .database-panel {
     width: calc(100% - 32px);
     min-height: 0;
     margin-top: 20px;
@@ -1641,9 +1961,40 @@ input {
   .proposal-dialog {
     padding: 22px 18px;
   }
+
+  .database-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .database-table-select select {
+    width: 100%;
+  }
+
+  .database-search {
+    width: 100%;
+  }
+
+  .database-add-button {
+    align-self: flex-end;
+    margin-left: 0;
+  }
+
+  .database-dialog {
+    padding: 18px;
+  }
 }
 
 @media (max-width: 560px) {
+  .database-form-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .database-pagination {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .procurement-screen {
     padding-bottom: 20px;
   }
@@ -2692,6 +3043,37 @@ input {
   background: #494f59;
   color: #fff;
   white-space: nowrap;
+}
+
+.report-sort-button {
+  display: flex;
+  width: 100%;
+  min-height: 28px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.report-sort-button:focus-visible {
+  outline: 2px solid #02e9d9;
+  outline-offset: 3px;
+}
+
+.report-sort-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  transition: transform 120ms ease;
+}
+
+.report-sort-icon.is-descending img {
+  transform: rotate(180deg);
 }
 
 .report-table td {

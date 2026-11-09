@@ -2,6 +2,9 @@
 
 import Image from "next/image";
 import { useMemo, useState } from "react";
+import SortableRecordTable, {
+  type SortableRecord,
+} from "@/app/lib/sortable-record-table";
 
 const noteChoices = ["Sesuai", "Tidak sesuai"] as const;
 type NoteChoice = (typeof noteChoices)[number] | "";
@@ -53,15 +56,6 @@ export type StockInspectionRecord = {
     catatan: string;
   }[];
 };
-
-function formatInspectionDate(value: string) {
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(value));
-}
 
 function getNoteParts(catatan: string): Pick<
   DraftStockItem,
@@ -181,6 +175,34 @@ export default function StockCheckTable({
       return sort.direction === "ascending" ? compared : -compared;
     });
   }, [items, search, sort]);
+  const historyRows: SortableRecord[] = history.flatMap(
+    (inspection): SortableRecord[] =>
+      inspection.items.length
+      ? inspection.items.map((item) => ({
+          id_pemeriksaan: inspection.id_pemeriksaan,
+          tanggal_pemeriksaan: inspection.tanggal_pemeriksaan,
+          id_pemeriksa: inspection.id_pemeriksa,
+          nama_pemeriksa: inspection.nama_pemeriksa,
+          id_barang: item.id_barang,
+          nama_barang: item.nama_barang,
+          satuan: item.satuan,
+          stok: item.stok,
+          catatan: item.catatan || "—",
+        }))
+      : [
+          {
+            id_pemeriksaan: inspection.id_pemeriksaan,
+            tanggal_pemeriksaan: inspection.tanggal_pemeriksaan,
+            id_pemeriksa: inspection.id_pemeriksa,
+            nama_pemeriksa: inspection.nama_pemeriksa,
+            id_barang: "—",
+            nama_barang: "—",
+            satuan: "—",
+            stok: null,
+            catatan: "—",
+          },
+        ],
+  );
 
   function updateItem(id: string, change: Partial<DraftStockItem>) {
     const currentItem = items.find((item) => item.id_barang === id);
@@ -584,51 +606,25 @@ export default function StockCheckTable({
           <span>{history.length} pemeriksaan</span>
         </header>
         <div className="stock-check-history-viewport">
-          <table className="stock-check-history-table">
-            <thead>
-              <tr>
-                <th>ID Pemeriksaan</th>
-                <th>Tanggal</th>
-                <th>ID Pemeriksa</th>
-                <th>Nama Pemeriksa</th>
-                <th>ID Barang</th>
-                <th>Nama Barang</th>
-                <th>Satuan</th>
-                <th>Stok Tercatat</th>
-                <th>Catatan</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.flatMap((inspection) => {
-                const details = inspection.items.length
-                  ? inspection.items
-                  : [null];
-
-                return details.map((item, index) => (
-                  <tr
-                    key={`${inspection.id_pemeriksaan}-${item?.id_barang ?? `empty-${index}`}`}
-                  >
-                    <td>{inspection.id_pemeriksaan}</td>
-                    <td>{formatInspectionDate(inspection.tanggal_pemeriksaan)}</td>
-                    <td>{inspection.id_pemeriksa}</td>
-                    <td>{inspection.nama_pemeriksa}</td>
-                    <td>{item?.id_barang ?? "—"}</td>
-                    <td>{item?.nama_barang ?? "—"}</td>
-                    <td>{item?.satuan ?? "—"}</td>
-                    <td>{item?.stok ?? "—"}</td>
-                    <td>{item?.catatan || "—"}</td>
-                  </tr>
-                ));
-              })}
-              {history.length === 0 ? (
-                <tr>
-                  <td className="stock-check-empty" colSpan={9}>
-                    Belum ada riwayat pengecekan stok.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
+          <SortableRecordTable
+            caption="Riwayat pemeriksaan stok"
+            className="stock-check-history-table"
+            columns={[
+              { key: "id_pemeriksaan", label: "ID Pemeriksaan" },
+              { key: "tanggal_pemeriksaan", label: "Tanggal", format: "date" },
+              { key: "id_pemeriksa", label: "ID Pemeriksa" },
+              { key: "nama_pemeriksa", label: "Nama Pemeriksa" },
+              { key: "id_barang", label: "ID Barang" },
+              { key: "nama_barang", label: "Nama Barang" },
+              { key: "satuan", label: "Satuan" },
+              { key: "stok", label: "Stok Tercatat" },
+              { key: "catatan", label: "Catatan" },
+            ]}
+            emptyMessage="Belum ada riwayat pengecekan stok."
+            initialDirection="desc"
+            initialSortKey="tanggal_pemeriksaan"
+            rows={historyRows}
+          />
         </div>
       </section>
     </>

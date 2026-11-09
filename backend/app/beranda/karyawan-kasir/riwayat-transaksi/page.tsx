@@ -5,25 +5,15 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { dashboardPathForRole, getCurrentSession } from "@/app/lib/auth";
 import { prisma } from "@/app/lib/prisma";
+import SortableRecordTable, {
+  type SortableRecord,
+} from "@/app/lib/sortable-record-table";
 
 export const instant = false;
 
 export const metadata: Metadata = {
   title: "Riwayat Transaksi | Apotek Media Medika",
 };
-
-function formatDate(date: Date) {
-  const [year, month, day] = date.toISOString().slice(0, 10).split("-");
-  return `${day}-${month}-${year}`;
-}
-
-function formatTime(time: Date) {
-  return `${time.toISOString().slice(11, 16)} WIB`;
-}
-
-function formatRupiah(value: string) {
-  return `Rp${new Intl.NumberFormat("id-ID").format(BigInt(value))}`;
-}
 
 export default async function TransactionHistoryPage() {
   await connection();
@@ -58,6 +48,27 @@ export default async function TransactionHistoryPage() {
         },
       },
     },
+  });
+  const rows: SortableRecord[] = transactions.flatMap((transaction) => {
+    const items = transaction.detail_transaksi.length
+      ? transaction.detail_transaksi
+      : [null];
+
+    return items.map((item) => ({
+      id_transaksi: transaction.id_transaksi,
+      tanggal_transaksi: transaction.tanggal_transaksi.toISOString(),
+      waktu_transaksi: transaction.waktu_transaksi.toISOString().slice(11, 19),
+      barang_terjual: item?.barang.nama_barang ?? "—",
+      kategori: item?.barang.kategori ?? "—",
+      satuan: item?.barang.satuan ?? "—",
+      harga_satuan: item?.harga_satuan_jual?.toFixed(0) ?? null,
+      jumlah_barang: item?.jumlah_jual ?? null,
+      harga_subtotal:
+        item?.harga_satuan_jual
+          ?.mul(item.jumlah_jual)
+          .toFixed(0) ?? null,
+      harga_total: transaction.total_harga?.toFixed(0) ?? "0",
+    }));
   });
 
   return (
@@ -99,76 +110,26 @@ export default async function TransactionHistoryPage() {
 
       <section aria-label="Tabel riwayat transaksi" className="report-panel">
         <div className="report-table-viewport">
-          <table className="report-table transaction-history-table">
-            <caption className="sr-only">
-              ID, tanggal dan waktu transaksi, detail barang terjual, dan total
-              harga
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">ID Transaksi</th>
-                <th scope="col">Tanggal Transaksi</th>
-                <th scope="col">Waktu</th>
-                <th scope="col">Barang Terjual</th>
-                <th scope="col">Kategori</th>
-                <th scope="col">Satuan</th>
-                <th scope="col">Harga Satuan</th>
-                <th scope="col">Jumlah Barang</th>
-                <th scope="col">Harga Subtotal</th>
-                <th scope="col">Harga Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactions.length ? (
-                transactions.flatMap((transaction) =>
-                  transaction.detail_transaksi.map((item, index) => (
-                    <tr key={`${transaction.id_transaksi}-${item.id_barang}`}>
-                      {index === 0 ? (
-                        <>
-                          <td rowSpan={transaction.detail_transaksi.length}>
-                            {transaction.id_transaksi}
-                          </td>
-                          <td rowSpan={transaction.detail_transaksi.length}>
-                            {formatDate(transaction.tanggal_transaksi)}
-                          </td>
-                          <td rowSpan={transaction.detail_transaksi.length}>
-                            {formatTime(transaction.waktu_transaksi)}
-                          </td>
-                        </>
-                      ) : null}
-                      <td>{item.barang.nama_barang}</td>
-                      <td>{item.barang.kategori}</td>
-                      <td>{item.barang.satuan}</td>
-                      <td>
-                        {formatRupiah(item.harga_satuan_jual?.toFixed(0) ?? "0")}
-                      </td>
-                      <td>{item.jumlah_jual}</td>
-                      <td>
-                        {formatRupiah(
-                          item.harga_satuan_jual
-                            ?.mul(item.jumlah_jual)
-                            .toFixed(0) ?? "0",
-                        )}
-                      </td>
-                      {index === 0 ? (
-                        <td rowSpan={transaction.detail_transaksi.length}>
-                          {formatRupiah(
-                            transaction.total_harga?.toFixed(0) ?? "0",
-                          )}
-                        </td>
-                      ) : null}
-                    </tr>
-                  )),
-                )
-              ) : (
-                <tr>
-                  <td className="report-empty" colSpan={10}>
-                    Belum ada transaksi.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          <SortableRecordTable
+            caption="ID, tanggal dan waktu transaksi, detail barang terjual, dan total harga"
+            className="report-table transaction-history-table"
+            columns={[
+              { key: "id_transaksi", label: "ID Transaksi" },
+              { key: "tanggal_transaksi", label: "Tanggal Transaksi", format: "date" },
+              { key: "waktu_transaksi", label: "Waktu", format: "time" },
+              { key: "barang_terjual", label: "Barang Terjual" },
+              { key: "kategori", label: "Kategori" },
+              { key: "satuan", label: "Satuan" },
+              { key: "harga_satuan", label: "Harga Satuan", format: "currency" },
+              { key: "jumlah_barang", label: "Jumlah Barang" },
+              { key: "harga_subtotal", label: "Harga Subtotal", format: "currency" },
+              { key: "harga_total", label: "Harga Total", format: "currency" },
+            ]}
+            emptyMessage="Belum ada transaksi."
+            initialDirection="desc"
+            initialSortKey="tanggal_transaksi"
+            rows={rows}
+          />
         </div>
       </section>
     </main>

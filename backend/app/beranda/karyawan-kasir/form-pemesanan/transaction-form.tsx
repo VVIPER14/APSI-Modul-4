@@ -34,6 +34,8 @@ type Receipt = {
   items: ReceiptItem[];
 };
 
+type ReceiptSortKey = "nama_barang" | "jumlah_jual" | "subtotal";
+
 const columns: { key: SortKey; label: string }[] = [
   { key: "id_barang", label: "ID" },
   { key: "nama_barang", label: "Nama Barang" },
@@ -149,6 +151,10 @@ export default function TransactionForm({
   const [isConfirming, setIsConfirming] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
+  const [receiptSort, setReceiptSort] = useState<{
+    key: ReceiptSortKey;
+    direction: SortDirection;
+  }>({ key: "nama_barang", direction: "ascending" });
   const [printReceiptId, setPrintReceiptId] = useState<string | null>(null);
 
   const productsById = useMemo(
@@ -171,6 +177,36 @@ export default function TransactionForm({
       return sortDirection === "ascending" ? compared : -compared;
     });
   }, [products, search, sortDirection, sortKey]);
+  const receiptItems = useMemo(() => {
+    if (!receipt) {
+      return [];
+    }
+
+    return [...receipt.items].sort((first, second) => {
+      const compared =
+        receiptSort.key === "nama_barang"
+          ? first.nama_barang.localeCompare(second.nama_barang, "id", {
+              numeric: true,
+              sensitivity: "base",
+            })
+          : (() => {
+              const firstValue =
+                receiptSort.key === "jumlah_jual"
+                  ? BigInt(first.jumlah_jual)
+                  : BigInt(first.subtotal);
+              const secondValue =
+                receiptSort.key === "jumlah_jual"
+                  ? BigInt(second.jumlah_jual)
+                  : BigInt(second.subtotal);
+              return firstValue < secondValue
+                ? -1
+                : firstValue > secondValue
+                  ? 1
+                  : 0;
+            })();
+      return receiptSort.direction === "ascending" ? compared : -compared;
+    });
+  }, [receipt, receiptSort]);
 
   const cartItems = useMemo(
     () =>
@@ -693,13 +729,43 @@ export default function TransactionForm({
           <table>
             <thead>
               <tr>
-                <th>Barang</th>
-                <th>Jumlah</th>
-                <th>Subtotal</th>
+                {([
+                  ["nama_barang", "Barang"],
+                  ["jumlah_jual", "Jumlah"],
+                  ["subtotal", "Subtotal"],
+                ] as const).map(([key, label]) => (
+                  <th
+                    aria-sort={
+                      receiptSort.key === key
+                        ? receiptSort.direction === "ascending"
+                          ? "ascending"
+                          : "descending"
+                        : "none"
+                    }
+                    key={key}
+                  >
+                    <button
+                      className="report-sort-button"
+                      onClick={() =>
+                        setReceiptSort((current) => ({
+                          key,
+                          direction:
+                            current.key === key &&
+                            current.direction === "ascending"
+                              ? "descending"
+                              : "ascending",
+                        }))
+                      }
+                      type="button"
+                    >
+                      {label}
+                    </button>
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {receipt.items.map((item) => (
+              {receiptItems.map((item) => (
                 <tr key={item.id_barang}>
                   <td>
                     {item.nama_barang}

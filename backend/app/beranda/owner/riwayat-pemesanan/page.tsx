@@ -1,30 +1,19 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Fragment } from "react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { dashboardPathForRole, getCurrentSession } from "@/app/lib/auth";
 import { prisma } from "@/app/lib/prisma";
+import SortableRecordTable, {
+  type SortableRecord,
+} from "@/app/lib/sortable-record-table";
 
 export const instant = false;
 
 export const metadata: Metadata = {
   title: "Riwayat Pemesanan | Apotek Media Medika",
 };
-
-function formatDate(value: Date) {
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(value);
-}
-
-function formatCurrency(value: string) {
-  return `Rp${new Intl.NumberFormat("id-ID").format(BigInt(value || "0"))}`;
-}
 
 export default async function OrderHistoryPage() {
   await connection();
@@ -64,6 +53,69 @@ export default async function OrderHistoryPage() {
       },
     },
   });
+  const rows: SortableRecord[] = [];
+  for (const order of orders) {
+    if (order.detail_pemesanan.length === 0) {
+      rows.push({
+        id_pemesanan: order.id_pemesanan,
+        tanggal_pemesanan: order.tanggal_pemesanan.toISOString(),
+        status_pemesanan: order.status_pemesanan,
+        id_supplier: order.supplier?.id_suplier ?? "—",
+        id_barang: "—",
+        jumlah_pesan: null,
+        harga_total: order.harga_total?.toFixed(0) ?? "0",
+        id_penerimaan: "—",
+        tanggal_penerimaan: null,
+        id_penerima: "—",
+        no_faktur: "—",
+        jumlah_diterima: null,
+      });
+      continue;
+    }
+
+    for (const item of order.detail_pemesanan) {
+          const receipts = order.penerimaan.flatMap((receipt) =>
+            receipt.detail_penerimaan
+              .filter((received) => received.id_barang === item.id_barang)
+              .map((received) => ({ receipt, received })),
+          );
+
+      if (receipts.length === 0) {
+        rows.push({
+          id_pemesanan: order.id_pemesanan,
+          tanggal_pemesanan: order.tanggal_pemesanan.toISOString(),
+          status_pemesanan: order.status_pemesanan,
+          id_supplier: order.supplier?.id_suplier ?? "—",
+          id_barang: item.id_barang,
+          jumlah_pesan: item.jumlah_pesan,
+          harga_total: order.harga_total?.toFixed(0) ?? "0",
+          id_penerimaan: "—",
+          tanggal_penerimaan: null,
+          id_penerima: "—",
+          no_faktur: "—",
+          jumlah_diterima: null,
+        });
+        continue;
+      }
+
+      for (const { receipt, received } of receipts) {
+        rows.push({
+          id_pemesanan: order.id_pemesanan,
+          tanggal_pemesanan: order.tanggal_pemesanan.toISOString(),
+          status_pemesanan: order.status_pemesanan,
+          id_supplier: order.supplier?.id_suplier ?? "—",
+          id_barang: item.id_barang,
+          jumlah_pesan: item.jumlah_pesan,
+          harga_total: order.harga_total?.toFixed(0) ?? "0",
+          id_penerimaan: receipt.id_penerimaan,
+          tanggal_penerimaan: receipt.tanggal_penerimaan.toISOString(),
+          id_penerima: receipt.pengguna?.id_pengguna ?? "—",
+          no_faktur: receipt.no_faktur ?? "—",
+          jumlah_diterima: received.jumlah_diterima,
+        });
+      }
+    }
+  }
 
   return (
     <main className="role-dashboard procurement-screen order-history-screen">
@@ -118,106 +170,28 @@ export default async function OrderHistoryPage() {
           <span>{orders.length} pemesanan</span>
         </header>
         <div className="approval-table-viewport">
-          <table className="approval-table order-history-table">
-            <thead>
-              <tr>
-                <th>ID Pemesanan</th>
-                <th>Tanggal Pemesanan</th>
-                <th>Status Pemesanan</th>
-                <th>ID Supplier</th>
-                <th>ID Barang</th>
-                <th>Jumlah Pesan</th>
-                <th>Harga Total</th>
-                <th>ID Penerimaan</th>
-                <th>Tanggal Penerimaan</th>
-                <th>ID Penerima</th>
-                <th>Nomor Faktur</th>
-                <th>Jumlah Diterima</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((order) => (
-                <Fragment key={order.id_pemesanan}>
-                  {order.detail_pemesanan.map((item) => {
-                    const receipts = order.penerimaan.flatMap((receipt) =>
-                      receipt.detail_penerimaan
-                        .filter(
-                          (received) => received.id_barang === item.id_barang,
-                        )
-                        .map((received) => ({ receipt, received })),
-                    );
-
-                    return receipts.length ? (
-                      receipts.map(({ receipt, received }) => (
-                        <tr
-                          key={`${order.id_pemesanan}-${item.id_barang}-${receipt.id_penerimaan}`}
-                        >
-                          <td>{order.id_pemesanan}</td>
-                          <td>{formatDate(order.tanggal_pemesanan)}</td>
-                          <td>{order.status_pemesanan}</td>
-                          <td>{order.supplier?.id_suplier ?? "—"}</td>
-                          <td>{item.id_barang}</td>
-                          <td>{item.jumlah_pesan}</td>
-                          <td>
-                            {formatCurrency(order.harga_total?.toFixed(0) ?? "0")}
-                          </td>
-                          <td>{receipt.id_penerimaan}</td>
-                          <td>{formatDate(receipt.tanggal_penerimaan)}</td>
-                          <td>{receipt.pengguna?.id_pengguna ?? "—"}</td>
-                          <td>{receipt.no_faktur ?? "—"}</td>
-                          <td>{received.jumlah_diterima}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr
-                        key={`${order.id_pemesanan}-${item.id_barang}-pending`}
-                      >
-                        <td>{order.id_pemesanan}</td>
-                        <td>{formatDate(order.tanggal_pemesanan)}</td>
-                        <td>{order.status_pemesanan}</td>
-                        <td>{order.supplier?.id_suplier ?? "—"}</td>
-                        <td>{item.id_barang}</td>
-                        <td>{item.jumlah_pesan}</td>
-                        <td>
-                          {formatCurrency(order.harga_total?.toFixed(0) ?? "0")}
-                        </td>
-                        <td>—</td>
-                        <td>—</td>
-                        <td>—</td>
-                        <td>—</td>
-                        <td>—</td>
-                      </tr>
-                    );
-                  })}
-                  {order.detail_pemesanan.length === 0 ? (
-                    <tr>
-                      <td>{order.id_pemesanan}</td>
-                      <td>{formatDate(order.tanggal_pemesanan)}</td>
-                      <td>{order.status_pemesanan}</td>
-                      <td>{order.supplier?.id_suplier ?? "—"}</td>
-                      <td>—</td>
-                      <td>—</td>
-                      <td>
-                        {formatCurrency(order.harga_total?.toFixed(0) ?? "0")}
-                      </td>
-                      <td>—</td>
-                      <td>—</td>
-                      <td>—</td>
-                      <td>—</td>
-                      <td>—</td>
-                    </tr>
-                  ) : null}
-                </Fragment>
-              ))}
-              {orders.length === 0 ? (
-                <tr>
-                  <td className="proposal-empty-cell" colSpan={12}>
-                    Belum ada riwayat pemesanan.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
+          <SortableRecordTable
+            caption="Riwayat pemesanan beserta laporan penerimaan"
+            className="approval-table order-history-table"
+            columns={[
+              { key: "id_pemesanan", label: "ID Pemesanan" },
+              { key: "tanggal_pemesanan", label: "Tanggal Pemesanan", format: "date" },
+              { key: "status_pemesanan", label: "Status Pemesanan" },
+              { key: "id_supplier", label: "ID Supplier" },
+              { key: "id_barang", label: "ID Barang" },
+              { key: "jumlah_pesan", label: "Jumlah Pesan" },
+              { key: "harga_total", label: "Harga Total", format: "currency" },
+              { key: "id_penerimaan", label: "ID Penerimaan" },
+              { key: "tanggal_penerimaan", label: "Tanggal Penerimaan", format: "date" },
+              { key: "id_penerima", label: "ID Penerima" },
+              { key: "no_faktur", label: "Nomor Faktur" },
+              { key: "jumlah_diterima", label: "Jumlah Diterima" },
+            ]}
+            emptyMessage="Belum ada riwayat pemesanan."
+            initialDirection="desc"
+            initialSortKey="tanggal_pemesanan"
+            rows={rows}
+          />
         </div>
       </section>
     </main>

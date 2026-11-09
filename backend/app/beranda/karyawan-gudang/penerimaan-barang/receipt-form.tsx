@@ -34,6 +34,9 @@ export default function ReceiptForm({
   const [quantityByItem, setQuantityByItem] = useState<Record<string, string>>(
     {},
   );
+  const [sortByOrder, setSortByOrder] = useState<
+    Record<string, { key: string; direction: "asc" | "desc" }>
+  >({});
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -131,6 +134,34 @@ export default function ReceiptForm({
   const pendingOrders = orders.filter((order) =>
     order.items.some((item) => item.sisa > 0),
   );
+  const receiptColumns = [
+    { key: "id_barang", label: "ID Barang" },
+    { key: "nama_barang", label: "Nama Barang" },
+    { key: "satuan", label: "Satuan" },
+    { key: "jumlah_pesan", label: "Jumlah Pesan" },
+    { key: "jumlah_diterima", label: "Sudah Diterima" },
+    { key: "sisa", label: "Sisa" },
+    { key: "jumlah_diterima_sekarang", label: "Jumlah Diterima Sekarang" },
+  ] as const;
+
+  function toggleReceiptSort(orderId: string, key: string) {
+    setSortByOrder((current) => {
+      const currentSort = current[orderId] ?? {
+        key: "id_barang",
+        direction: "asc" as const,
+      };
+      return {
+        ...current,
+        [orderId]: {
+          key,
+          direction:
+            currentSort.key === key && currentSort.direction === "asc"
+              ? "desc"
+              : "asc",
+        },
+      };
+    });
+  }
 
   return (
     <section aria-label="Daftar barang untuk diterima" className="receipt-list">
@@ -148,6 +179,30 @@ export default function ReceiptForm({
       {pendingOrders.length ? (
         pendingOrders.map((order) => {
           const isBusy = busyOrderId === order.id_pemesanan;
+          const currentSort = sortByOrder[order.id_pemesanan] ?? {
+            key: "id_barang",
+            direction: "asc" as const,
+          };
+          const sortedItems = [...order.items].sort((first, second) => {
+            const firstValue =
+              currentSort.key === "jumlah_diterima_sekarang"
+                ? quantityByItem[`${order.id_pemesanan}:${first.id_barang}`] ??
+                  first.sisa
+                : first[currentSort.key as keyof typeof first];
+            const secondValue =
+              currentSort.key === "jumlah_diterima_sekarang"
+                ? quantityByItem[`${order.id_pemesanan}:${second.id_barang}`] ??
+                  second.sisa
+                : second[currentSort.key as keyof typeof second];
+            const result =
+              typeof firstValue === "number" && typeof secondValue === "number"
+                ? firstValue - secondValue
+                : String(firstValue).localeCompare(String(secondValue), "id", {
+                    numeric: true,
+                    sensitivity: "base",
+                  });
+            return currentSort.direction === "asc" ? result : -result;
+          });
           return (
             <article
               aria-labelledby={`receipt-${order.id_pemesanan}`}
@@ -183,17 +238,33 @@ export default function ReceiptForm({
                 <table className="report-table">
                   <thead>
                     <tr>
-                      <th scope="col">ID Barang</th>
-                      <th scope="col">Nama Barang</th>
-                      <th scope="col">Satuan</th>
-                      <th scope="col">Jumlah Pesan</th>
-                      <th scope="col">Sudah Diterima</th>
-                      <th scope="col">Sisa</th>
-                      <th scope="col">Jumlah Diterima Sekarang</th>
+                      {receiptColumns.map(({ key, label }) => (
+                        <th
+                          aria-sort={
+                            currentSort.key === key
+                              ? currentSort.direction === "asc"
+                                ? "ascending"
+                                : "descending"
+                              : "none"
+                          }
+                          key={key}
+                          scope="col"
+                        >
+                          <button
+                            className="report-sort-button"
+                            onClick={() =>
+                              toggleReceiptSort(order.id_pemesanan, key)
+                            }
+                            type="button"
+                          >
+                            {label}
+                          </button>
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {order.items.map((item) => {
+                    {sortedItems.map((item) => {
                       const key = `${order.id_pemesanan}:${item.id_barang}`;
                       return (
                         <tr key={item.id_barang}>

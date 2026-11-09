@@ -43,7 +43,7 @@ const dashboardCards: Record<string, string[]> = {
     "Laporan Keuangan",
     "Riwayat Pemesanan",
   ],
-  admin: ["Data Master", "Verifikasi Data", "Laporan Persediaan"],
+  admin: ["Kelola Database"],
 };
 
 const roleDescriptions: Record<string, string> = {
@@ -54,7 +54,7 @@ const roleDescriptions: Record<string, string> = {
   owner:
     "Beranda operasional owner untuk pemantauan stok, pengajuan, laporan keuangan, dan riwayat pemesanan.",
   admin:
-    "Beranda operasional admin untuk pengelolaan data master, verifikasi data, dan pelaporan persediaan.",
+    "Kelola seluruh data aplikasi melalui satu menu database.",
 };
 
 const defaultMenuIcons: [string, string, string] = [
@@ -178,7 +178,9 @@ function RoleDashboard({
           );
 
           const menuHref =
-            role === "karyawan-kasir" && index === 0
+            role === "admin" && index === 0
+              ? "/beranda/admin/kelola-database/"
+              : role === "karyawan-kasir" && index === 0
               ? "/beranda/karyawan-kasir/form-pemesanan/"
               : role === "karyawan-kasir" && index === 1
                 ? "/beranda/karyawan-kasir/riwayat-transaksi/"
