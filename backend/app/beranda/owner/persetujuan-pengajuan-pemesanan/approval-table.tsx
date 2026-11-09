@@ -24,7 +24,13 @@ export type ApprovalProposal = {
   nama_pengaju: string;
   status_penyetujuan: number | null;
   harga_total: string;
+  id_pemesanan?: string;
   items: ApprovalItem[];
+};
+
+type ApprovalSupplier = {
+  id_supplier: string;
+  nama_supplier: string;
 };
 
 type SortKey =
@@ -99,10 +105,24 @@ function formatDate(value: string) {
 
 export default function ApprovalTable({
   initialProposals,
+  suppliers,
 }: {
   initialProposals: ApprovalProposal[];
+  suppliers: ApprovalSupplier[];
 }) {
   const [proposals, setProposals] = useState(initialProposals);
+  const [supplierByProposal, setSupplierByProposal] = useState<
+    Record<string, string>
+  >(() =>
+    Object.fromEntries(
+      initialProposals.map((proposal) => [
+        proposal.id_pengajuan,
+        proposal.status_penyetujuan === proposalStatuses.processing
+          ? ""
+          : proposal.items[0]?.id_supplier ?? "",
+      ]),
+    ),
+  );
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("id_pengajuan");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
@@ -158,9 +178,19 @@ export default function ApprovalTable({
     setSortDirection("asc");
   }
 
-  async function decide(proposal: ApprovalProposal, action: "approve" | "reject") {
+  async function decide(
+    proposal: ApprovalProposal,
+    action: "approve" | "reject",
+  ) {
     setError(null);
     setBusyProposalId(proposal.id_pengajuan);
+    const selectedSupplierId = supplierByProposal[proposal.id_pengajuan] ?? "";
+
+    if (!selectedSupplierId) {
+      setError("Pilih supplier yang sudah dihubungi sebelum memutuskan.");
+      setBusyProposalId(null);
+      return;
+    }
 
     try {
       const response = await fetch(
@@ -171,6 +201,7 @@ export default function ApprovalTable({
           body: JSON.stringify({
             action,
             id_pengajuan: proposal.id_pengajuan,
+            id_supplier: selectedSupplierId,
           }),
         },
       );
@@ -178,6 +209,9 @@ export default function ApprovalTable({
         error?: string;
         id_pengajuan?: string;
         status?: number;
+        id_pemesanan?: string;
+        id_supplier?: string;
+        nama_supplier?: string;
       };
 
       if (!response.ok || typeof result.status !== "number") {
@@ -188,7 +222,20 @@ export default function ApprovalTable({
       setProposals((current) =>
         current.map((item) =>
           item.id_pengajuan === result.id_pengajuan
-            ? { ...item, status_penyetujuan: result.status ?? item.status_penyetujuan }
+            ? {
+                ...item,
+                status_penyetujuan:
+                  result.status ?? item.status_penyetujuan,
+                id_pemesanan: result.id_pemesanan ?? item.id_pemesanan,
+                items:
+                  result.id_supplier && result.nama_supplier
+                    ? item.items.map((proposalItem) => ({
+                        ...proposalItem,
+                        id_supplier: result.id_supplier ?? null,
+                        nama_supplier: result.nama_supplier ?? null,
+                      }))
+                    : item.items,
+              }
             : item,
         ),
       );
@@ -300,15 +347,46 @@ export default function ApprovalTable({
                         >
                           {proposalStatusLabel(proposal.status_penyetujuan)}
                         </span>
+                        {proposal.id_pemesanan ? (
+                          <small>ID Pemesanan: {proposal.id_pemesanan}</small>
+                        ) : null}
                         {isProcessing && (
-                          <div className="approval-decision-buttons">
+                          <>
+                            <label className="approval-supplier-field">
+                              Supplier yang dihubungi
+                              <select
+                                disabled={isBusy}
+                                onChange={(event) =>
+                                  setSupplierByProposal((current) => ({
+                                    ...current,
+                                    [proposal.id_pengajuan]:
+                                      event.target.value,
+                                  }))
+                                }
+                                value={
+                                  supplierByProposal[proposal.id_pengajuan] ??
+                                  ""
+                                }
+                              >
+                                <option value="">Pilih supplier</option>
+                                {suppliers.map((supplier) => (
+                                  <option
+                                    key={supplier.id_supplier}
+                                    value={supplier.id_supplier}
+                                  >
+                                    {supplier.nama_supplier}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <div className="approval-decision-buttons">
                             <button
                               className="approval-reject-button"
                               disabled={isBusy}
                               onClick={() => void decide(proposal, "reject")}
                               type="button"
                             >
-                              Tolak
+                              Supplier tidak tersedia — Tolak
                             </button>
                             <button
                               className="approval-approve-button"
@@ -316,9 +394,10 @@ export default function ApprovalTable({
                               onClick={() => void decide(proposal, "approve")}
                               type="button"
                             >
-                              {isBusy ? "..." : "Setuju"}
+                              {isBusy ? "..." : "Konfirmasi Supplier & Setujui"}
                             </button>
-                          </div>
+                            </div>
+                          </>
                         )}
                       </td>
                     )}

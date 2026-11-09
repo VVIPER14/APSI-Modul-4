@@ -5,7 +5,6 @@ import { prisma } from "@/app/lib/prisma";
 
 type ProposalItemInput = {
   id_barang: string;
-  id_supplier: string;
   harga_satuan: string;
   jumlah_pesan: number;
 };
@@ -28,9 +27,6 @@ function parseItems(body: Record<string, unknown>): ProposalItemInput[] | null {
       typeof value.id_barang !== "string" ||
       !value.id_barang.trim() ||
       value.id_barang.length > 255 ||
-      typeof value.id_supplier !== "string" ||
-      !value.id_supplier.trim() ||
-      value.id_supplier.length > 255 ||
       typeof value.harga_satuan !== "string" ||
       !/^\d{1,19}$/.test(value.harga_satuan) ||
       typeof value.jumlah_pesan !== "number" ||
@@ -45,7 +41,6 @@ function parseItems(body: Record<string, unknown>): ProposalItemInput[] | null {
     seenProductIds.add(value.id_barang);
     items.push({
       id_barang: value.id_barang,
-      id_supplier: value.id_supplier,
       harga_satuan: value.harga_satuan,
       jumlah_pesan: value.jumlah_pesan,
     });
@@ -123,25 +118,14 @@ export async function POST(request: Request) {
       const result = await prisma.$transaction(async (transaction) => {
         await transaction.$executeRaw`LOCK TABLE "pengajuan" IN EXCLUSIVE MODE`;
 
-        const [products, suppliers] = await Promise.all([
-          transaction.barang.findMany({
+        const products = await transaction.barang.findMany({
             where: { id_barang: { in: items.map((item) => item.id_barang) } },
             select: { id_barang: true },
-          }),
-          transaction.supplier.findMany({
-            where: {
-              id_suplier: { in: items.map((item) => item.id_supplier) },
-            },
-            select: { id_suplier: true },
-          }),
-        ]);
+          });
 
-        if (
-          products.length !== new Set(items.map((item) => item.id_barang)).size ||
-          suppliers.length !== new Set(items.map((item) => item.id_supplier)).size
-        ) {
+        if (products.length !== new Set(items.map((item) => item.id_barang)).size) {
           return {
-            error: "Barang atau supplier berubah. Muat ulang halaman sebelum menyimpan.",
+            error: "Barang berubah. Muat ulang halaman sebelum menyimpan.",
             status: 409,
           };
         }
@@ -223,7 +207,7 @@ export async function POST(request: Request) {
             data: items.map((item) => ({
               id_pengajuan,
               id_barang: item.id_barang,
-              id_supplier: item.id_supplier,
+              id_supplier: null,
               harga_satuan: new Prisma.Decimal(item.harga_satuan),
               jumlah_pesan: item.jumlah_pesan,
             })),
@@ -274,9 +258,14 @@ export async function POST(request: Request) {
           where: { id_pengajuan: idPengajuan },
           select: {
             id_pengaju: true,
+            tanggal_pengajuan: true,
             status_penyetujuan: true,
             detail_pengajuan: {
-              select: { id_supplier: true },
+              select: {
+                id_barang: true,
+                harga_satuan: true,
+                jumlah_pesan: true,
+              },
             },
           },
         });
@@ -289,24 +278,96 @@ export async function POST(request: Request) {
           return { error: "Pengajuan ini sudah dikirim.", status: 409 };
         }
 
-        if (
-          proposal.detail_pengajuan.length === 0 ||
-          proposal.detail_pengajuan.some((item) => !item.id_supplier)
-        ) {
+        if (proposal.detail_pengajuan.length === 0) {
           return {
-            error: "Lengkapi barang dan supplier sebelum mengirim pengajuan.",
+            error: "Tambahkan minimal satu barang sebelum mengirim pengajuan.",
             status: 400,
           };
         }
 
+        const items = [...proposal.detail_pengajuan].sort((left, right) =>
+          left.id_barang.localeCompare(right.id_barang),
+        );
+        const totals = items.map((item) =>
+          new Prisma.Decimal(item.harga_satuan).mul(item.jumlah_pesan),
+        );
+        const [nextProposal] = await transaction.$queryRaw<
+          { id_pengajuan: string }[]
+        >`
+          SELECT
+            'PGJ' || LPAD(
+              (COALESCE(MAX(SUBSTRING("id_pengajuan" FROM 4)::BIGINT), 0) + 1)::TEXT,
+              3,
+              '0'
+            ) AS id_pengajuan
+          FROM "pengajuan"
+          WHERE "id_pengajuan" ~ '^PGJ[0-9]+$'
+        `;
+        const firstNewNumber = Number(nextProposal?.id_pengajuan.slice(3));
+
+        if (!Number.isSafeInteger(firstNewNumber) || firstNewNumber < 1) {
+          return {
+            error: "ID pengajuan tidak dapat dibuat.",
+            status: 500,
+          };
+        }
+
+        const proposalIds = items.map((_, index) =>
+          index === 0
+            ? idPengajuan
+            : `PGJ${String(firstNewNumber + index - 1).padStart(3, "0")}`,
+        );
         await transaction.pengajuan.update({
           where: { id_pengajuan: idPengajuan },
-          data: { status_penyetujuan: proposalStatuses.processing },
+          data: {
+            status_penyetujuan: proposalStatuses.processing,
+            harga_total: totals[0],
+          },
         });
+        await transaction.detail_pengajuan.deleteMany({
+          where: { id_pengajuan: idPengajuan },
+        });
+
+        await transaction.detail_pengajuan.create({
+          data: {
+            id_pengajuan: idPengajuan,
+            id_barang: items[0].id_barang,
+            harga_satuan: items[0].harga_satuan,
+            jumlah_pesan: items[0].jumlah_pesan,
+          },
+        });
+
+        for (let index = 1; index < items.length; index += 1) {
+          const item = items[index];
+          const newProposalId = proposalIds[index];
+
+          await transaction.pengajuan.create({
+            data: {
+              id_pengajuan: newProposalId,
+              tanggal_pengajuan: proposal.tanggal_pengajuan,
+              id_pengaju: session.userId,
+              status_penyetujuan: proposalStatuses.processing,
+              harga_total: totals[index],
+            },
+          });
+          await transaction.detail_pengajuan.create({
+            data: {
+              id_pengajuan: newProposalId,
+              id_barang: item.id_barang,
+              harga_satuan: item.harga_satuan,
+              jumlah_pesan: item.jumlah_pesan,
+            },
+          });
+        }
 
         return {
           id_pengajuan: idPengajuan,
           status: proposalStatuses.processing,
+          proposals: items.map((item, index) => ({
+            id_pengajuan: proposalIds[index],
+            id_barang: item.id_barang,
+            harga_total: totals[index].toFixed(0),
+          })),
         };
       });
 

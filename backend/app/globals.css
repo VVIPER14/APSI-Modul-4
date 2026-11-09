@@ -1298,8 +1298,27 @@ input {
 }
 
 .approval-decision-cell {
-  min-width: 160px;
+  min-width: 250px;
   vertical-align: middle;
+}
+
+.approval-supplier-field {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+  color: rgb(255 255 255 / 75%);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.approval-supplier-field select {
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid rgb(255 255 255 / 22%);
+  border-radius: 8px;
+  background: #273443;
+  color: #fff;
+  font: inherit;
 }
 
 .approval-decision-buttons {
@@ -1310,7 +1329,7 @@ input {
 }
 
 .approval-decision-buttons button {
-  min-height: 32px;
+  min-height: 34px;
   padding: 6px 12px;
   border: 0;
   border-radius: 999px;
@@ -1318,6 +1337,10 @@ input {
   cursor: pointer;
   font-size: 11px;
   font-weight: 600;
+}
+
+.approval-decision-buttons .approval-approve-button {
+  border-radius: 8px;
 }
 
 .approval-decision-buttons button:disabled {
@@ -1332,6 +1355,68 @@ input {
 .approval-approve-button {
   background: #14aeb0;
   color: #061c25 !important;
+}
+
+.receipt-order-heading h2 {
+  margin: 0;
+}
+
+.receipt-order-heading p {
+  margin: 8px 0 16px;
+  color: rgb(255 255 255 / 72%);
+}
+
+.receipt-invoice-field {
+  display: grid;
+  max-width: 420px;
+  gap: 6px;
+  margin-bottom: 16px;
+  color: rgb(255 255 255 / 82%);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.receipt-invoice-field input,
+.receipt-quantity-input {
+  min-height: 36px;
+  padding: 6px 9px;
+  border: 1px solid rgb(255 255 255 / 22%);
+  border-radius: 8px;
+  background: rgb(16 24 39 / 75%);
+  color: #fff;
+  font: inherit;
+}
+
+.receipt-quantity-input {
+  width: 110px;
+}
+
+.receipt-submit-button {
+  min-height: 40px;
+  margin-top: 14px;
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 9px;
+  background: #02c9bd;
+  color: #10232e;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.receipt-submit-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.receipt-notice {
+  width: min(1296px, calc(100% - 64px));
+  margin: 20px auto 0;
+  color: #9af4c4;
+}
+
+.receipt-empty {
+  color: rgb(255 255 255 / 80%);
 }
 
 .approval-total-row td {

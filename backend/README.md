@@ -23,6 +23,12 @@ set a random `CRON_SECRET` in the deployment environment so the scheduled
 endpoint can be authorized. Daily finance charts show sales revenue; net profit
 is not available because transaction cost prices are not stored.
 
+Warehouse staff can submit a draft containing multiple products; submitting it
+creates one proposal ID per product. The owner selects the supplier after
+confirming availability, then approves or rejects each product independently.
+Approved orders appear in the warehouse receipt menu, where received quantities
+are recorded and update inventory.
+
 `database.sql` seeds example accounts with literal sample passwords (for
 example, username `anak_admin123` has password `hash_02`). A matching legacy
 plain-text password is accepted once and immediately replaced in the database

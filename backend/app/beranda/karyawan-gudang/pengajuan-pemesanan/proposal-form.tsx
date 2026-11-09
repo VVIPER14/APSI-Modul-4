@@ -14,11 +14,6 @@ export type ProposalProduct = {
   satuan: string;
 };
 
-export type ProposalSupplier = {
-  id_supplier: string;
-  nama_supplier: string;
-};
-
 export type ProposalItem = {
   id_barang: string;
   nama_barang: string;
@@ -41,7 +36,6 @@ export type ProposalRecord = {
 type Props = {
   initialProposals: ProposalRecord[];
   products: ProposalProduct[];
-  suppliers: ProposalSupplier[];
 };
 
 type SortKey =
@@ -113,7 +107,6 @@ function compareRows(
 export default function ProposalForm({
   initialProposals,
   products,
-  suppliers,
 }: Props) {
   const [proposals, setProposals] = useState(initialProposals);
   const [activeDraftId, setActiveDraftId] = useState(
@@ -127,7 +120,6 @@ export default function ProposalForm({
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState("");
-  const [selectedSupplierId, setSelectedSupplierId] = useState("");
   const [priceInput, setPriceInput] = useState("");
   const [quantityInput, setQuantityInput] = useState("1");
   const [isSaving, setIsSaving] = useState(false);
@@ -140,10 +132,6 @@ export default function ProposalForm({
   const productById = useMemo(
     () => new Map(products.map((product) => [product.id_barang, product])),
     [products],
-  );
-  const supplierById = useMemo(
-    () => new Map(suppliers.map((supplier) => [supplier.id_supplier, supplier])),
-    [suppliers],
   );
   const rows = useMemo(
     () =>
@@ -179,11 +167,6 @@ export default function ProposalForm({
   }
 
   async function saveDraft(items: ProposalItem[], idPengajuan: string | null) {
-    if (items.some((item) => !item.id_supplier)) {
-      setError("Pilih supplier untuk setiap barang sebelum menyimpan.");
-      return null;
-    }
-
     setError(null);
     setIsSaving(true);
 
@@ -198,7 +181,6 @@ export default function ProposalForm({
             id_pengajuan: idPengajuan,
             items: items.map((item) => ({
               id_barang: item.id_barang,
-              id_supplier: item.id_supplier,
               harga_satuan: item.harga_satuan,
               jumlah_pesan: item.jumlah_pesan,
             })),
@@ -224,7 +206,11 @@ export default function ProposalForm({
           )?.tanggal_pengajuan ?? new Date().toISOString(),
         status_penyetujuan: proposalStatuses.draft,
         harga_total: result.harga_total,
-        items,
+        items: items.map((item) => ({
+          ...item,
+          id_supplier: null,
+          nama_supplier: null,
+        })),
       };
       setProposals((current) =>
         [
@@ -254,18 +240,16 @@ export default function ProposalForm({
     event.preventDefault();
 
     const product = productById.get(selectedProductId);
-    const supplier = supplierById.get(selectedSupplierId);
     const quantity = Number(quantityInput);
 
     if (
       !product ||
-      !supplier ||
       !/^\d{1,19}$/.test(priceInput) ||
       !Number.isSafeInteger(quantity) ||
       quantity < 1 ||
       quantity > 2147483647
     ) {
-      setError("Lengkapi barang, supplier, harga, dan jumlah dengan benar.");
+      setError("Lengkapi barang, harga, dan jumlah dengan benar.");
       return;
     }
 
@@ -282,8 +266,8 @@ export default function ProposalForm({
         ...product,
         harga_satuan: priceInput,
         jumlah_pesan: quantity,
-        id_supplier: supplier.id_supplier,
-        nama_supplier: supplier.nama_supplier,
+        id_supplier: null,
+        nama_supplier: null,
       },
     ];
     const savedId = await saveDraft(nextItems, activeDraftId);
@@ -291,7 +275,6 @@ export default function ProposalForm({
     if (savedId) {
       setDialogOpen(false);
       setSelectedProductId("");
-      setSelectedSupplierId("");
       setPriceInput("");
       setQuantityInput("1");
     }
@@ -334,23 +317,57 @@ export default function ProposalForm({
       );
       const result = (await response.json()) as {
         error?: string;
-        id_pengajuan?: string;
         status?: number;
+        proposals?: {
+          id_pengajuan: string;
+          id_barang: string;
+          harga_total: string;
+        }[];
       };
 
-      if (!response.ok || result.status !== proposalStatuses.processing) {
+      if (
+        !response.ok ||
+        result.status !== proposalStatuses.processing ||
+        !Array.isArray(result.proposals) ||
+        result.proposals.length !== activeDraft.items.length
+      ) {
         setError(result.error ?? "Pengajuan gagal dikirim.");
         return;
       }
 
+      const itemById = new Map(
+        activeDraft.items.map((item) => [item.id_barang, item]),
+      );
+      const submittedProposals: ProposalRecord[] = result.proposals.map(
+        (proposal) => {
+          const item = itemById.get(proposal.id_barang);
+          if (!item) {
+            throw new Error("Barang pengajuan tidak cocok dengan draft.");
+          }
+
+          return {
+            id_pengajuan: proposal.id_pengajuan,
+            tanggal_pengajuan: activeDraft.tanggal_pengajuan,
+            status_penyetujuan: proposalStatuses.processing,
+            harga_total: proposal.harga_total,
+            items: [
+              {
+                ...item,
+                id_supplier: null,
+                nama_supplier: null,
+              },
+            ],
+          };
+        },
+      );
       setProposals((current) =>
-        current.map((proposal) =>
-          proposal.id_pengajuan === result.id_pengajuan
-            ? {
-                ...proposal,
-                status_penyetujuan: proposalStatuses.processing,
-              }
-            : proposal,
+        [
+          ...current.filter(
+            (proposal) => proposal.id_pengajuan !== activeDraft.id_pengajuan,
+          ),
+          ...submittedProposals,
+        ].sort((left, right) =>
+          right.tanggal_pengajuan.localeCompare(left.tanggal_pengajuan),
         ),
       );
       setActiveDraftId(null);
@@ -385,7 +402,7 @@ export default function ProposalForm({
         </label>
         <button
           className="proposal-add-button"
-          disabled={isSaving || products.length === 0 || suppliers.length === 0}
+          disabled={isSaving || products.length === 0}
           onClick={() => {
             setError(null);
             setDialogOpen(true);
@@ -530,12 +547,7 @@ export default function ProposalForm({
         </p>
         <button
           className="proposal-submit-button"
-          disabled={
-            isSaving ||
-            !activeDraft ||
-            activeDraft.items.length === 0 ||
-            activeDraft.items.some((item) => !item.id_supplier)
-          }
+          disabled={isSaving || !activeDraft || activeDraft.items.length === 0}
           onClick={() => void submitDraft()}
           type="button"
         >
@@ -600,25 +612,6 @@ export default function ProposalForm({
                 </span>
               </div>
             )}
-
-            <label>
-              Supplier
-              <select
-                onChange={(event) => setSelectedSupplierId(event.target.value)}
-                required
-                value={selectedSupplierId}
-              >
-                <option value="">Pilih supplier</option>
-                {suppliers.map((supplier) => (
-                  <option
-                    key={supplier.id_supplier}
-                    value={supplier.id_supplier}
-                  >
-                    {supplier.nama_supplier}
-                  </option>
-                ))}
-              </select>
-            </label>
 
             <div className="proposal-dialog-fields">
               <label>

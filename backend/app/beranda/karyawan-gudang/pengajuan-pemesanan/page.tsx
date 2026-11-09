@@ -7,7 +7,6 @@ import { getCurrentSession, dashboardPathForRole } from "@/app/lib/auth";
 import { prisma } from "@/app/lib/prisma";
 import ProposalForm, {
   type ProposalRecord,
-  type ProposalSupplier,
   type ProposalProduct,
 } from "./proposal-form";
 
@@ -29,7 +28,7 @@ export default async function ProposalPage() {
     redirect(dashboardPathForRole(session.role) ?? "/");
   }
 
-  const [products, suppliers, proposals] = await Promise.all([
+  const [products, proposals] = await Promise.all([
     prisma.barang.findMany({
       orderBy: { nama_barang: "asc" },
       select: {
@@ -38,10 +37,6 @@ export default async function ProposalPage() {
         kategori: true,
         satuan: true,
       },
-    }),
-    prisma.supplier.findMany({
-      orderBy: { nama_supplier: "asc" },
-      select: { id_suplier: true, nama_supplier: true },
     }),
     prisma.pengajuan.findMany({
       where: { id_pengaju: session.userId },
@@ -68,10 +63,6 @@ export default async function ProposalPage() {
     nama_barang: product.nama_barang,
     kategori: product.kategori,
     satuan: product.satuan,
-  }));
-  const supplierOptions: ProposalSupplier[] = suppliers.map((supplier) => ({
-    id_supplier: supplier.id_suplier,
-    nama_supplier: supplier.nama_supplier,
   }));
   const initialProposals: ProposalRecord[] = proposals.map((proposal) => ({
     id_pengajuan: proposal.id_pengajuan,
@@ -118,8 +109,9 @@ export default async function ProposalPage() {
           <span className="role-dashboard-role">Karyawan Gudang</span>
           <h1>Pengajuan Pemesanan</h1>
           <p>
-            Daftar barang yang akan diajukan, lengkapi supplier, jumlah
-            diajukan, dan harga satuan sebelum dikirim.
+            Daftar barang, jumlah, dan harga satuan yang diajukan. Setiap
+            barang mendapat ID pengajuan tersendiri agar owner dapat
+            memutuskan secara terpisah.
           </p>
         </div>
         <div aria-hidden="true" className="role-dashboard-avatar">
@@ -135,7 +127,6 @@ export default async function ProposalPage() {
       <ProposalForm
         initialProposals={initialProposals}
         products={catalog}
-        suppliers={supplierOptions}
       />
     </main>
   );

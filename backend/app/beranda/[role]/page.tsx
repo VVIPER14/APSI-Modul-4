@@ -184,6 +184,8 @@ function RoleDashboard({
               ? "/beranda/karyawan-gudang/pemeriksaan-stok/"
               : role === "karyawan-gudang" && index === 1
                 ? "/beranda/karyawan-gudang/pengajuan-pemesanan/"
+                : role === "karyawan-gudang" && index === 2
+                  ? "/beranda/karyawan-gudang/penerimaan-barang/"
                 : role === "owner" && index === 0
                   ? "/beranda/owner/informasi-stok-persediaan/"
                   : role === "owner" && index === 1

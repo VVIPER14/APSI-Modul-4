@@ -34,13 +34,17 @@ export async function POST(request: Request) {
     (body.action !== "approve" && body.action !== "reject") ||
     typeof body.id_pengajuan !== "string" ||
     !body.id_pengajuan.trim() ||
-    body.id_pengajuan.length > 255
+    body.id_pengajuan.length > 255 ||
+    typeof body.id_supplier !== "string" ||
+    !body.id_supplier.trim() ||
+    body.id_supplier.length > 255
   ) {
     return Response.json({ error: "Keputusan pengajuan tidak valid." }, { status: 400 });
   }
 
   const idPengajuan = body.id_pengajuan;
   const action = body.action;
+  const supplierId = body.id_supplier;
 
   try {
     const result = await prisma.$transaction(async (transaction) => {
@@ -53,7 +57,6 @@ export async function POST(request: Request) {
           detail_pengajuan: {
             select: {
               id_barang: true,
-              id_supplier: true,
               harga_satuan: true,
               jumlah_pesan: true,
             },
@@ -72,6 +75,27 @@ export async function POST(request: Request) {
         };
       }
 
+      if (proposal.detail_pengajuan.length === 0) {
+        return {
+          error: "Pengajuan tidak memiliki rincian barang.",
+          status: 409,
+        };
+      }
+
+      const supplier = await transaction.supplier.findUnique({
+        where: { id_suplier: supplierId },
+        select: { nama_supplier: true },
+      });
+
+      if (!supplier) {
+        return { error: "Supplier tidak ditemukan.", status: 404 };
+      }
+
+      await transaction.detail_pengajuan.updateMany({
+        where: { id_pengajuan: idPengajuan },
+        data: { id_supplier: supplierId },
+      });
+
       if (action === "reject") {
         await transaction.pengajuan.update({
           where: { id_pengajuan: idPengajuan },
@@ -84,35 +108,9 @@ export async function POST(request: Request) {
         return {
           id_pengajuan: idPengajuan,
           status: proposalStatuses.rejected,
-          id_pemesanan: [],
+          id_supplier: supplierId,
+          nama_supplier: supplier.nama_supplier,
         };
-      }
-
-      if (
-        proposal.detail_pengajuan.length === 0 ||
-        proposal.detail_pengajuan.some((item) => !item.id_supplier)
-      ) {
-        return {
-          error: "Pengajuan tidak memiliki supplier lengkap untuk diproses.",
-          status: 409,
-        };
-      }
-
-      const groupedItems = new Map<
-        string,
-        (typeof proposal.detail_pengajuan)[number][]
-      >();
-
-      for (const item of proposal.detail_pengajuan) {
-        const supplierId = item.id_supplier;
-
-        if (!supplierId) {
-          continue;
-        }
-
-        const group = groupedItems.get(supplierId) ?? [];
-        group.push(item);
-        groupedItems.set(supplierId, group);
       }
 
       const [nextOrder] = await transaction.$queryRaw<
@@ -134,37 +132,32 @@ export async function POST(request: Request) {
       }
 
       const { databaseDate } = getJakartaDatabaseDate();
-      const orderIds: string[] = [];
+      const id_pemesanan = `PMS${String(nextOrderNumber).padStart(3, "0")}`;
+      const orderTotal = proposal.detail_pengajuan.reduce(
+        (sum, item) =>
+          sum.plus(new Prisma.Decimal(item.harga_satuan).mul(item.jumlah_pesan)),
+        new Prisma.Decimal(0),
+      );
 
-      for (const [supplierId, items] of groupedItems) {
-        const id_pemesanan = `PMS${String(nextOrderNumber + orderIds.length).padStart(3, "0")}`;
-        const orderTotal = items.reduce(
-          (sum, item) =>
-            sum.plus(new Prisma.Decimal(item.harga_satuan).mul(item.jumlah_pesan)),
-          new Prisma.Decimal(0),
-        );
-
-        await transaction.pemesanan.create({
-          data: {
-            id_pemesanan,
-            tanggal_pemesanan: databaseDate,
-            status_pemesanan: "Menunggu Penerimaan",
-            tanggal_persetujuan: databaseDate,
-            id_supplier: supplierId,
-            id_pengajuan: idPengajuan,
-            harga_total: orderTotal,
-          },
-        });
-        await transaction.detail_pemesanan.createMany({
-          data: items.map((item) => ({
-            id_pemesanan,
-            id_barang: item.id_barang,
-            harga_satuan: item.harga_satuan,
-            jumlah_pesan: item.jumlah_pesan,
-          })),
-        });
-        orderIds.push(id_pemesanan);
-      }
+      await transaction.pemesanan.create({
+        data: {
+          id_pemesanan,
+          tanggal_pemesanan: databaseDate,
+          status_pemesanan: "Menunggu Penerimaan",
+          tanggal_persetujuan: databaseDate,
+          id_supplier: supplierId,
+          id_pengajuan: idPengajuan,
+          harga_total: orderTotal,
+        },
+      });
+      await transaction.detail_pemesanan.createMany({
+        data: proposal.detail_pengajuan.map((item) => ({
+          id_pemesanan,
+          id_barang: item.id_barang,
+          harga_satuan: item.harga_satuan,
+          jumlah_pesan: item.jumlah_pesan,
+        })),
+      });
 
       await transaction.pengajuan.update({
         where: { id_pengajuan: idPengajuan },
@@ -177,7 +170,9 @@ export async function POST(request: Request) {
       return {
         id_pengajuan: idPengajuan,
         status: proposalStatuses.approved,
-        id_pemesanan: orderIds,
+        id_pemesanan,
+        id_supplier: supplierId,
+        nama_supplier: supplier.nama_supplier,
       };
     });
 

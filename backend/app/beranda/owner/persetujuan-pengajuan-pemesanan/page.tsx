@@ -26,35 +26,48 @@ export default async function ApprovalPage() {
     redirect(dashboardPathForRole(session.role) ?? "/");
   }
 
-  const proposals = await prisma.pengajuan.findMany({
-    where: {
-      status_penyetujuan: {
-        in: [
-          proposalStatuses.processing,
-          proposalStatuses.approved,
-          proposalStatuses.rejected,
-        ],
-      },
-    },
-    orderBy: [{ tanggal_pengajuan: "desc" }, { id_pengajuan: "desc" }],
-    include: {
-      pengguna_pengajuan_id_pengajuTopengguna: {
-        select: { nama_pengguna: true },
-      },
-      detail_pengajuan: {
-        include: {
-          barang: {
-            select: {
-              nama_barang: true,
-              kategori: true,
-              satuan: true,
-            },
-          },
-          supplier: { select: { nama_supplier: true } },
+  const [proposals, suppliers] = await Promise.all([
+    prisma.pengajuan.findMany({
+      where: {
+        status_penyetujuan: {
+          in: [
+            proposalStatuses.processing,
+            proposalStatuses.approved,
+            proposalStatuses.rejected,
+          ],
         },
       },
-    },
-  });
+      orderBy: [{ tanggal_pengajuan: "desc" }, { id_pengajuan: "desc" }],
+      include: {
+        pengguna_pengajuan_id_pengajuTopengguna: {
+          select: { nama_pengguna: true },
+        },
+        detail_pengajuan: {
+          include: {
+            barang: {
+              select: {
+                nama_barang: true,
+                kategori: true,
+                satuan: true,
+              },
+            },
+            supplier: { select: { nama_supplier: true } },
+          },
+        },
+        pemesanan: {
+          select: { id_pemesanan: true },
+          orderBy: { id_pemesanan: "asc" },
+        },
+      },
+    }),
+    prisma.supplier.findMany({
+      orderBy: { nama_supplier: "asc" },
+      select: {
+        id_suplier: true,
+        nama_supplier: true,
+      },
+    }),
+  ]);
 
   const initialProposals: ApprovalProposal[] = proposals.map((proposal) => ({
     id_pengajuan: proposal.id_pengajuan,
@@ -63,6 +76,7 @@ export default async function ApprovalPage() {
       proposal.pengguna_pengajuan_id_pengajuTopengguna?.nama_pengguna ?? "—",
     status_penyetujuan: proposal.status_penyetujuan,
     harga_total: proposal.harga_total?.toFixed(0) ?? "0",
+    id_pemesanan: proposal.pemesanan[0]?.id_pemesanan,
     items: proposal.detail_pengajuan
       .map((item) => ({
         id_barang: item.id_barang,
@@ -118,7 +132,13 @@ export default async function ApprovalPage() {
         </div>
       </section>
 
-      <ApprovalTable initialProposals={initialProposals} />
+      <ApprovalTable
+        initialProposals={initialProposals}
+        suppliers={suppliers.map((supplier) => ({
+          id_supplier: supplier.id_suplier,
+          nama_supplier: supplier.nama_supplier,
+        }))}
+      />
     </main>
   );
 }
