@@ -1,0 +1,1 @@
+-- The existing database was provisioned with the renamed "stok" column.

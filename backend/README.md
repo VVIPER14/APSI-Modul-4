@@ -11,12 +11,17 @@ Configure `DATABASE_URL` and `AUTH_SECRET` in `.env` before running the app.
 requires it explicitly. In development only, `DATABASE_URL` is used as a
 fallback signing key when `AUTH_SECRET` is not set.
 
-Apply database changes from the `backend` directory with
-`npx prisma migrate deploy`. This adds the WIB transaction-time column and daily stock/finance
-report tables. Vercel runs the daily report recap at 00:00 WIB through
-`vercel.json`; set a random `CRON_SECRET` in the deployment environment so the
-scheduled endpoint can be authorized. Daily finance charts show sales revenue;
-net profit is not available because transaction cost prices are not stored.
+Production builds run `prisma migrate deploy` before generating Prisma Client.
+The existing production database was initially provisioned from `database.sql`,
+so its existing schema must first be baselined once with `prisma migrate resolve
+--applied <migration-name>` for each historical migration already reflected in
+that database. This allows deploys to apply new migrations without replaying
+legacy schema changes. The production database has been baselined. The daily
+report migration adds the WIB transaction-time column and stock/finance report
+tables. Vercel runs the daily report recap at 00:00 WIB through `vercel.json`;
+set a random `CRON_SECRET` in the deployment environment so the scheduled
+endpoint can be authorized. Daily finance charts show sales revenue; net profit
+is not available because transaction cost prices are not stored.
 
 `database.sql` seeds example accounts with literal sample passwords (for
 example, username `anak_admin123` has password `hash_02`). A matching legacy
