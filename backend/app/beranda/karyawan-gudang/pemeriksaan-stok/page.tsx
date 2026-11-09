@@ -7,7 +7,9 @@ import { connection } from "next/server";
 import { dashboardPathForRole, getCurrentSession } from "@/app/lib/auth";
 import { getInventorySummary } from "@/app/lib/inventory";
 import { prisma } from "@/app/lib/prisma";
-import StockCheckTable from "./stock-check-table";
+import StockCheckTable, {
+  type StockInspectionRecord,
+} from "./stock-check-table";
 
 export const metadata: Metadata = {
   title: "Pemeriksaan Stok | Apotek Media Medika",
@@ -57,31 +59,37 @@ async function StockCheckContent() {
     redirect(dashboardPathForRole(session.role) ?? "/");
   }
 
-  const products = await prisma.barang.findMany({
-    orderBy: { nama_barang: "asc" },
-    select: {
-      id_barang: true,
-      nama_barang: true,
-      kategori: true,
-      satuan: true,
-      stok_minimum: true,
-      detail_pemeriksaan: {
-        orderBy: [
-          { pemeriksaan_stok: { tanggal_pemeriksaan: "desc" } },
-          { id_pemeriksaan: "desc" },
-        ],
-        take: 1,
-        select: { stok: true, catatan: true },
+  const [products, inspections, inventory] = await Promise.all([
+    prisma.barang.findMany({
+      orderBy: { nama_barang: "asc" },
+      select: {
+        id_barang: true,
+        nama_barang: true,
+        kategori: true,
+        satuan: true,
+        stok_minimum: true,
       },
-    },
-  });
-  const inventory = await getInventorySummary(prisma);
+    }),
+    prisma.pemeriksaan_stok.findMany({
+      orderBy: [{ tanggal_pemeriksaan: "desc" }, { id_pemeriksaan: "desc" }],
+      take: 50,
+      include: {
+        pengguna: { select: { id_pengguna: true, nama_pengguna: true } },
+        detail_pemeriksaan: {
+          orderBy: { id_barang: "asc" },
+          include: {
+            barang: { select: { nama_barang: true, satuan: true } },
+          },
+        },
+      },
+    }),
+    getInventorySummary(prisma),
+  ]);
   const inventoryByProduct = new Map(
     inventory.map((item) => [item.id_barang, item]),
   );
 
   const initialItems = products.map((product) => {
-    const latestCheck = product.detail_pemeriksaan[0];
     const stockSummary = inventoryByProduct.get(product.id_barang);
 
     return {
@@ -93,12 +101,24 @@ async function StockCheckContent() {
       stok: stockSummary?.stok ?? 0,
       stok_masuk: stockSummary?.stok_masuk ?? 0,
       stok_keluar: stockSummary?.stok_keluar ?? 0,
-      catatan:
-        latestCheck?.catatan && latestCheck.catatan !== "-"
-          ? latestCheck.catatan
-          : "",
+      catatan: "",
     };
   });
+  const initialHistory: StockInspectionRecord[] = inspections.map(
+    (inspection) => ({
+      id_pemeriksaan: inspection.id_pemeriksaan,
+      tanggal_pemeriksaan: inspection.tanggal_pemeriksaan.toISOString(),
+      id_pemeriksa: inspection.pengguna?.id_pengguna ?? "—",
+      nama_pemeriksa: inspection.pengguna?.nama_pengguna ?? "—",
+      items: inspection.detail_pemeriksaan.map((item) => ({
+        id_barang: item.id_barang,
+        nama_barang: item.barang.nama_barang,
+        satuan: item.barang.satuan,
+        stok: item.stok,
+        catatan: item.catatan ?? "",
+      })),
+    }),
+  );
 
   return (
     <main className="role-dashboard stock-check-screen">
@@ -140,7 +160,12 @@ async function StockCheckContent() {
         </div>
       </section>
 
-      <StockCheckTable initialItems={initialItems} />
+      <StockCheckTable
+        initialHistory={initialHistory}
+        initialItems={initialItems}
+        inspectorId={session.userId}
+        inspectorName={session.name}
+      />
     </main>
   );
 }

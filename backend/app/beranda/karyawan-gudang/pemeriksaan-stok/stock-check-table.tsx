@@ -40,6 +40,29 @@ type SortState = {
   direction: "ascending" | "descending";
 };
 
+export type StockInspectionRecord = {
+  id_pemeriksaan: string;
+  tanggal_pemeriksaan: string;
+  id_pemeriksa: string;
+  nama_pemeriksa: string;
+  items: {
+    id_barang: string;
+    nama_barang: string;
+    satuan: string;
+    stok: number;
+    catatan: string;
+  }[];
+};
+
+function formatInspectionDate(value: string) {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(value));
+}
+
 function getNoteParts(catatan: string): Pick<
   DraftStockItem,
   "pilihanCatatan" | "catatanLainnya"
@@ -114,12 +137,19 @@ function compareItems(
 }
 
 export default function StockCheckTable({
+  initialHistory,
   initialItems,
+  inspectorId,
+  inspectorName,
 }: {
+  initialHistory: StockInspectionRecord[];
   initialItems: StockItem[];
+  inspectorId: string;
+  inspectorName: string;
 }) {
   const [items, setItems] = useState(() => initialItems.map(toDraft));
   const [originalItems, setOriginalItems] = useState(initialItems);
+  const [history, setHistory] = useState(initialHistory);
   const [changedItemIds, setChangedItemIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -135,16 +165,6 @@ export default function StockCheckTable({
   const [feedbackType, setFeedbackType] = useState<"success" | "neutral">(
     "neutral",
   );
-
-  const changedItems = useMemo(() => {
-    return items
-      .filter((item) => changedItemIds.has(item.id_barang))
-      .map(({ id_barang, stok, ...item }) => ({
-        id_barang,
-        stok,
-        catatan: getStoredNote({ id_barang, stok, ...item }),
-      }));
-  }, [changedItemIds, items]);
 
   const visibleItems = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("id");
@@ -220,12 +240,6 @@ export default function StockCheckTable({
       return;
     }
 
-    if (changedItems.length === 0) {
-      setFeedback("Tidak ada perubahan. Pemeriksaan tidak dicatat.");
-      setFeedbackType("neutral");
-      return;
-    }
-
     setIsSaving(true);
 
     try {
@@ -234,7 +248,13 @@ export default function StockCheckTable({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ items: changedItems }),
+          body: JSON.stringify({
+            items: items.map((item) => ({
+              id_barang: item.id_barang,
+              stok: item.stok,
+              catatan: getStoredNote(item),
+            })),
+          }),
         },
       );
       const result: unknown = await response.json();
@@ -256,30 +276,50 @@ export default function StockCheckTable({
         return;
       }
 
+      if (
+        !("id_pemeriksaan" in result) ||
+        typeof result.id_pemeriksaan !== "string" ||
+        !("tanggal_pemeriksaan" in result) ||
+        typeof result.tanggal_pemeriksaan !== "string"
+      ) {
+        setError("Respons penyimpanan pemeriksaan tidak valid.");
+        return;
+      }
+
+      const inspectionId = result.id_pemeriksaan;
+      const inspectionDate = result.tanggal_pemeriksaan;
       const savedItems = items.map((item) => ({
         ...item,
         ...(changedItemIds.has(item.id_barang)
           ? { stok_masuk: 0, stok_keluar: 0 }
           : {}),
+        pilihanCatatan: "" as NoteChoice,
+        catatanLainnya: "",
       }));
       setItems(savedItems);
       setOriginalItems(
-        savedItems.map(({ pilihanCatatan, catatanLainnya, ...item }) => ({
-          ...item,
-          catatan:
-            getStoredNote({ ...item, pilihanCatatan, catatanLainnya }) ?? "",
-        })),
+        savedItems.map((item) => ({ ...item, catatan: "" })),
       );
       setChangedItemIds(new Set());
       setEditingId(null);
-
-      if ("id_pemeriksaan" in result && typeof result.id_pemeriksaan === "string") {
-        setFeedback(`Pemeriksaan ${result.id_pemeriksaan} berhasil disimpan.`);
-        setFeedbackType("success");
-      } else {
-        setFeedback("Tidak ada perubahan baru. Pemeriksaan tidak dicatat.");
-        setFeedbackType("neutral");
-      }
+      setHistory((current) => [
+        {
+          id_pemeriksaan: inspectionId,
+          tanggal_pemeriksaan: inspectionDate,
+          id_pemeriksa: inspectorId,
+          nama_pemeriksa: inspectorName,
+          items: items.map((item) => ({
+            id_barang: item.id_barang,
+            nama_barang: item.nama_barang,
+            satuan: item.satuan,
+            stok: item.stok,
+            catatan: getStoredNote(item) ?? "",
+          })),
+        },
+        ...current,
+      ].slice(0, 50));
+      setFeedback(`Pemeriksaan ${inspectionId} berhasil direkap.`);
+      setFeedbackType("success");
     } catch {
       setError("Tidak dapat terhubung ke server. Silakan coba lagi.");
     } finally {
@@ -329,7 +369,8 @@ export default function StockCheckTable({
   }
 
   return (
-    <section aria-label="Daftar barang" className="stock-check-panel">
+    <>
+      <section aria-label="Daftar barang" className="stock-check-panel">
       <div className="stock-check-toolbar">
         <label className="stock-check-search">
           <Image
@@ -399,6 +440,7 @@ export default function StockCheckTable({
                     {isEditing ? (
                       <input
                         aria-label={`Stok tersedia ${item.nama_barang}`}
+                        disabled={isSaving}
                         max={2147483647}
                         min={0}
                         onChange={(event) =>
@@ -446,6 +488,7 @@ export default function StockCheckTable({
                       Catatan untuk {item.nama_barang}
                     </label>
                     <select
+                      disabled={isSaving}
                       id={`note-${item.id_barang}`}
                       onChange={(event) =>
                         updateItem(item.id_barang, {
@@ -464,6 +507,7 @@ export default function StockCheckTable({
                     {item.pilihanCatatan === "Tidak sesuai" && (
                       <input
                         aria-label={`Rincian ketidaksesuaian ${item.nama_barang}`}
+                        disabled={isSaving}
                         maxLength={255}
                         onChange={(event) =>
                           updateItem(item.id_barang, {
@@ -527,6 +571,66 @@ export default function StockCheckTable({
           {isSaving ? "Menyimpan..." : "Selesai"}
         </button>
       </div>
-    </section>
+      </section>
+      <section
+        aria-label="Riwayat pemeriksaan stok"
+        className="stock-check-panel stock-check-history-panel"
+      >
+        <header className="stock-check-history-heading">
+          <div>
+            <h2>Riwayat Pengecekan Sebelumnya</h2>
+            <p>Setiap penyelesaian menyimpan rekap stok seluruh barang.</p>
+          </div>
+          <span>{history.length} pemeriksaan</span>
+        </header>
+        <div className="stock-check-history-viewport">
+          <table className="stock-check-history-table">
+            <thead>
+              <tr>
+                <th>ID Pemeriksaan</th>
+                <th>Tanggal</th>
+                <th>ID Pemeriksa</th>
+                <th>Nama Pemeriksa</th>
+                <th>ID Barang</th>
+                <th>Nama Barang</th>
+                <th>Satuan</th>
+                <th>Stok Tercatat</th>
+                <th>Catatan</th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.flatMap((inspection) => {
+                const details = inspection.items.length
+                  ? inspection.items
+                  : [null];
+
+                return details.map((item, index) => (
+                  <tr
+                    key={`${inspection.id_pemeriksaan}-${item?.id_barang ?? `empty-${index}`}`}
+                  >
+                    <td>{inspection.id_pemeriksaan}</td>
+                    <td>{formatInspectionDate(inspection.tanggal_pemeriksaan)}</td>
+                    <td>{inspection.id_pemeriksa}</td>
+                    <td>{inspection.nama_pemeriksa}</td>
+                    <td>{item?.id_barang ?? "—"}</td>
+                    <td>{item?.nama_barang ?? "—"}</td>
+                    <td>{item?.satuan ?? "—"}</td>
+                    <td>{item?.stok ?? "—"}</td>
+                    <td>{item?.catatan || "—"}</td>
+                  </tr>
+                ));
+              })}
+              {history.length === 0 ? (
+                <tr>
+                  <td className="stock-check-empty" colSpan={9}>
+                    Belum ada riwayat pengecekan stok.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </>
   );
 }

@@ -1391,7 +1391,7 @@ input {
 }
 
 .order-history-table {
-  min-width: 980px;
+  min-width: 1880px;
 }
 
 .order-history-table td {
@@ -2066,6 +2066,83 @@ input {
   font-weight: 600;
 }
 
+.stock-check-history-panel {
+  min-height: 0;
+  margin-top: 20px;
+}
+
+.stock-check-history-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  color: #fff;
+  font-family: var(--font-poppins), Arial, sans-serif;
+}
+
+.stock-check-history-heading h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.stock-check-history-heading p {
+  margin: 5px 0 0;
+  color: rgb(255 255 255 / 70%);
+  font-family: var(--font-inter), Arial, sans-serif;
+  font-size: 12px;
+}
+
+.stock-check-history-heading > span {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border: 1px solid rgb(255 255 255 / 15%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 7%);
+  font-size: 11px;
+}
+
+.stock-check-history-viewport {
+  max-height: 520px;
+  overflow: auto;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 16px;
+  scrollbar-color: rgb(255 255 255 / 32%) transparent;
+  scrollbar-width: thin;
+}
+
+.stock-check-history-table {
+  width: 100%;
+  min-width: 1180px;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: rgb(255 255 255 / 88%);
+  font-family: var(--font-poppins), Arial, sans-serif;
+  font-size: 12px;
+  text-align: left;
+}
+
+.stock-check-history-table th {
+  position: sticky;
+  z-index: 1;
+  top: 0;
+  padding: 14px 12px;
+  background: #454b56;
+  color: #f3f4f6;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.stock-check-history-table td {
+  min-width: 72px;
+  padding: 12px;
+  border-top: 1px solid rgb(255 255 255 / 9%);
+}
+
+.stock-check-history-table .stock-check-empty {
+  height: 100px;
+}
+
 @media (max-width: 760px) {
   .stock-check-panel {
     width: calc(100% - 32px);
@@ -2081,6 +2158,14 @@ input {
 
   .stock-check-footer {
     align-items: flex-start;
+  }
+
+  .stock-check-history-panel {
+    min-height: 0;
+  }
+
+  .stock-check-history-heading h2 {
+    font-size: 15px;
   }
 
   .stock-check-finish {

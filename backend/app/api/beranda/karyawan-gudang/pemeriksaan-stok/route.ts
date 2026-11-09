@@ -102,37 +102,6 @@ export async function POST(request: Request) {
       return { error: "Daftar barang berubah. Muat ulang halaman sebelum menyimpan." };
     }
 
-    const latestItems = await transaction.$queryRaw<
-      { id_barang: string; stok: number; catatan: string | null }[]
-    >`
-      SELECT DISTINCT ON (detail.id_barang)
-        detail.id_barang,
-        detail.stok,
-        detail.catatan
-      FROM "detail_pemeriksaan" AS detail
-      INNER JOIN "pemeriksaan_stok" AS pemeriksaan
-        ON pemeriksaan.id_pemeriksaan = detail.id_pemeriksaan
-      WHERE detail.id_barang = ANY(${items.map((item) => item.id_barang)}::varchar[])
-      ORDER BY
-        detail.id_barang,
-        pemeriksaan.tanggal_pemeriksaan DESC,
-        pemeriksaan.id_pemeriksaan DESC
-    `;
-    const latestByProduct = new Map(
-      latestItems.map((item) => [item.id_barang, item]),
-    );
-    const changedItems = items.filter((item) => {
-      const current = latestByProduct.get(item.id_barang);
-      return (
-        (current?.stok ?? 0) !== item.stok ||
-        (current?.catatan ?? null) !== item.catatan
-      );
-    });
-
-    if (changedItems.length === 0) {
-      return { noChanges: true };
-    }
-
     const [nextInspection] = await transaction.$queryRaw<
       { id_pemeriksaan: string }[]
     >`
@@ -162,7 +131,7 @@ export async function POST(request: Request) {
     });
 
     await transaction.detail_pemeriksaan.createMany({
-      data: changedItems.map((item) => ({
+      data: items.map((item) => ({
         id_pemeriksaan,
         id_barang: item.id_barang,
         stok: item.stok,
@@ -170,7 +139,10 @@ export async function POST(request: Request) {
       })),
     });
 
-    return { id_pemeriksaan };
+    return {
+      id_pemeriksaan,
+      tanggal_pemeriksaan: tanggal_pemeriksaan.toISOString(),
+    };
   });
 
   if ("error" in result) {

@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Fragment } from "react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
@@ -48,6 +49,19 @@ export default async function OrderHistoryPage() {
           jumlah_pesan: true,
         },
       },
+      penerimaan: {
+        orderBy: [{ tanggal_penerimaan: "asc" }, { id_penerimaan: "asc" }],
+        include: {
+          pengguna: { select: { id_pengguna: true } },
+          detail_penerimaan: {
+            orderBy: { id_barang: "asc" },
+            select: {
+              id_barang: true,
+              jumlah_diterima: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -78,7 +92,8 @@ export default async function OrderHistoryPage() {
           <h1>Riwayat Pemesanan</h1>
           <p>
             Daftar pemesanan yang tercatat setelah pengajuan barang disetujui,
-            termasuk supplier dan jumlah barang yang dipesan.
+            termasuk supplier, jumlah barang yang dipesan, dan setiap
+            penerimaan barang.
           </p>
         </div>
         <div aria-hidden="true" className="role-dashboard-avatar">
@@ -113,45 +128,90 @@ export default async function OrderHistoryPage() {
                 <th>ID Barang</th>
                 <th>Jumlah Pesan</th>
                 <th>Harga Total</th>
+                <th>ID Penerimaan</th>
+                <th>Tanggal Penerimaan</th>
+                <th>ID Penerima</th>
+                <th>Nomor Faktur</th>
+                <th>Jumlah Diterima</th>
               </tr>
             </thead>
             <tbody>
-              {orders.flatMap((order) => {
-                const items = order.detail_pemesanan.length
-                  ? order.detail_pemesanan
-                  : [null];
+              {orders.map((order) => (
+                <Fragment key={order.id_pemesanan}>
+                  {order.detail_pemesanan.map((item) => {
+                    const receipts = order.penerimaan.flatMap((receipt) =>
+                      receipt.detail_penerimaan
+                        .filter(
+                          (received) => received.id_barang === item.id_barang,
+                        )
+                        .map((received) => ({ receipt, received })),
+                    );
 
-                return items.map((item, index) => (
-                  <tr
-                    key={`${order.id_pemesanan}-${item?.id_barang ?? "empty"}`}
-                  >
-                    {index === 0 ? (
-                      <>
-                        <td rowSpan={items.length}>{order.id_pemesanan}</td>
-                        <td rowSpan={items.length}>
-                          {formatDate(order.tanggal_pemesanan)}
+                    return receipts.length ? (
+                      receipts.map(({ receipt, received }) => (
+                        <tr
+                          key={`${order.id_pemesanan}-${item.id_barang}-${receipt.id_penerimaan}`}
+                        >
+                          <td>{order.id_pemesanan}</td>
+                          <td>{formatDate(order.tanggal_pemesanan)}</td>
+                          <td>{order.status_pemesanan}</td>
+                          <td>{order.supplier?.id_suplier ?? "—"}</td>
+                          <td>{item.id_barang}</td>
+                          <td>{item.jumlah_pesan}</td>
+                          <td>
+                            {formatCurrency(order.harga_total?.toFixed(0) ?? "0")}
+                          </td>
+                          <td>{receipt.id_penerimaan}</td>
+                          <td>{formatDate(receipt.tanggal_penerimaan)}</td>
+                          <td>{receipt.pengguna?.id_pengguna ?? "—"}</td>
+                          <td>{receipt.no_faktur ?? "—"}</td>
+                          <td>{received.jumlah_diterima}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr
+                        key={`${order.id_pemesanan}-${item.id_barang}-pending`}
+                      >
+                        <td>{order.id_pemesanan}</td>
+                        <td>{formatDate(order.tanggal_pemesanan)}</td>
+                        <td>{order.status_pemesanan}</td>
+                        <td>{order.supplier?.id_suplier ?? "—"}</td>
+                        <td>{item.id_barang}</td>
+                        <td>{item.jumlah_pesan}</td>
+                        <td>
+                          {formatCurrency(order.harga_total?.toFixed(0) ?? "0")}
                         </td>
-                        <td rowSpan={items.length}>
-                          {order.status_pemesanan}
-                        </td>
-                        <td rowSpan={items.length}>
-                          {order.supplier?.id_suplier ?? "—"}
-                        </td>
-                      </>
-                    ) : null}
-                    <td>{item?.id_barang ?? "—"}</td>
-                    <td>{item?.jumlah_pesan ?? "—"}</td>
-                    {index === 0 ? (
-                      <td rowSpan={items.length}>
+                        <td>—</td>
+                        <td>—</td>
+                        <td>—</td>
+                        <td>—</td>
+                        <td>—</td>
+                      </tr>
+                    );
+                  })}
+                  {order.detail_pemesanan.length === 0 ? (
+                    <tr>
+                      <td>{order.id_pemesanan}</td>
+                      <td>{formatDate(order.tanggal_pemesanan)}</td>
+                      <td>{order.status_pemesanan}</td>
+                      <td>{order.supplier?.id_suplier ?? "—"}</td>
+                      <td>—</td>
+                      <td>—</td>
+                      <td>
                         {formatCurrency(order.harga_total?.toFixed(0) ?? "0")}
                       </td>
-                    ) : null}
-                  </tr>
-                ));
-              })}
+                      <td>—</td>
+                      <td>—</td>
+                      <td>—</td>
+                      <td>—</td>
+                      <td>—</td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              ))}
               {orders.length === 0 ? (
                 <tr>
-                  <td className="proposal-empty-cell" colSpan={7}>
+                  <td className="proposal-empty-cell" colSpan={12}>
                     Belum ada riwayat pemesanan.
                   </td>
                 </tr>
